@@ -97,21 +97,42 @@ export async function clearSessionCookie(): Promise<void> {
 
 /**
  * Helper to determine the application base URL for OAuth callbacks.
+ * Dynamically resolves from incoming request headers (x-forwarded-host, host)
+ * so it automatically works on localhost, Vercel deployments, and custom domains
+ * without hardcoding localhost:3000 in production.
  */
 export function getAppUrl(request?: Request): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  if (request) {
+    const rawHost =
+      request.headers.get('x-forwarded-host') ||
+      request.headers.get('host');
+
+    if (rawHost) {
+      const host = rawHost.split(',')[0].trim();
+      const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+      const rawProto = request.headers.get('x-forwarded-proto');
+      const proto = rawProto
+        ? rawProto.split(',')[0].trim()
+        : (isLocal ? 'http' : 'https');
+      return `${proto}://${host}`;
+    }
   }
 
-  if (request) {
-    const host =
-      request.headers.get('x-forwarded-host') ||
-      request.headers.get('host') ||
-      'localhost:3000';
-    const proto =
-      request.headers.get('x-forwarded-proto') ||
-      (host.includes('localhost') ? 'http' : 'https');
-    return `${proto}://${host}`;
+  // Fallback: If running on Vercel without a request object
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  // Explicit environment variable if configured (and not localhost in production)
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+    if (process.env.NODE_ENV !== 'production' || !appUrl.includes('localhost')) {
+      return appUrl;
+    }
   }
 
   return 'http://localhost:3000';
