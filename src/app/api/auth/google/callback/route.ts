@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAppUrl, createSessionToken, setSessionCookie } from '@/lib/auth';
+import { getAppUrl, createSessionToken, setSessionCookie, SESSION_COOKIE_NAME } from '@/lib/auth';
 import { getDatabase } from '@/lib/mongodb';
 import { COLLECTIONS, ensureDefaultData } from '@/lib/db';
 import { isAdminEmail } from '@/lib/adminConfig';
@@ -157,11 +157,22 @@ export async function GET(request: NextRequest) {
       destination = userDoc.role === 'admin' ? '/admin' : '/dashboard';
     }
 
-    return NextResponse.redirect(`${appUrl}${destination}`);
-  } catch (err) {
-    console.error('Google OAuth callback error:', err);
+    const response = NextResponse.redirect(`${appUrl}${destination}`);
+    response.cookies.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    });
+
+    return response;
+  } catch (err: unknown) {
+    const errorObj = err as Error;
+    console.error('Google OAuth callback error:', errorObj);
+    const detail = errorObj?.message ? `: ${errorObj.message}` : '';
     return NextResponse.redirect(
-      `${appUrl}/login?error=${encodeURIComponent('An unexpected error occurred during Google sign in.')}`
+      `${appUrl}/login?error=${encodeURIComponent(`An unexpected error occurred during Google sign in${detail}`)}`
     );
   }
 }

@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import type { UserRole } from '@/lib/types';
 
-const SESSION_COOKIE_NAME = 'marathi_session_token';
+export const SESSION_COOKIE_NAME = 'marathi_session_token';
 const DEFAULT_SECRET = 'marathi-club-session-secret-key-32-chars-min!';
 
 function getSecretKey(): Uint8Array {
