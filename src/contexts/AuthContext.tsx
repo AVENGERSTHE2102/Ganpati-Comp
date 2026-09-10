@@ -1,12 +1,20 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+
+export interface AuthUser {
+  uid: string;
+  displayName: string;
+  name?: string;
+  email: string;
+  emailVerified: boolean;
+  photoURL?: string;
+  image?: string;
+  role?: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   role: string | null;
   loading: boolean;
   logout: () => Promise<void>;
@@ -22,62 +30,79 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      
-      if (currentUser) {
-        try {
-          const userRef = doc(db, 'users', currentUser.uid);
-          const userDoc = await getDoc(userRef);
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            setRole(data.role);
-
-            // Sync emailVerified to Firestore if it was verified in Auth but false in Firestore
-            if (currentUser.emailVerified && data.emailVerified !== true) {
-              updateDoc(userRef, { emailVerified: true }).catch(() => {});
-            }
-          } else {
-            setRole(null);
-          }
-        } catch (error) {
-          console.error("Error fetching user role:", error);
-          setRole(null);
-        }
-      } else {
-        setRole(null);
-      }
-      
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+  const applyUserData = useCallback((data: { user: { uid: string; name?: string; email: string; emailVerified?: boolean; image?: string } | null; role: string | null }) => {
+    if (data.user) {
+      const authUser: AuthUser = {
+        uid: data.user.uid,
+        displayName: data.user.name || data.user.email?.split('@')[0] || 'User',
+        name: data.user.name,
+        email: data.user.email,
+        emailVerified: Boolean(data.user.emailVerified),
+        photoURL: data.user.image,
+        image: data.user.image,
+        role: data.role || 'participant',
+      };
+      setUser(authUser);
+      setRole(data.role || 'participant');
+    } else {
+      setUser(null);
+      setRole(null);
+    }
   }, []);
 
-  const refreshUser = async () => {
-    if (auth.currentUser) {
-      try {
-        await auth.currentUser.reload();
-        const refreshed = auth.currentUser;
-        setUser({ ...refreshed } as User);
+  const fetchUser = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/me', { cache: 'no-store' });
+      const data = res.ok ? await res.json() : { user: null, role: null };
+      applyUserData(data);
+    } catch (err) {
+      console.error('Error checking user session:', err);
+      setUser(null);
+      setRole(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [applyUserData]);
 
-        if (refreshed.emailVerified) {
-          const userRef = doc(db, 'users', refreshed.uid);
-          await updateDoc(userRef, { emailVerified: true });
-        }
-      } catch (err) {
-        console.error("Error refreshing user:", err);
-      }
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : { user: null, role: null }))
+      .then((data) => {
+        if (!isMounted) return;
+        applyUserData(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.error('Error checking user session:', err);
+        setUser(null);
+        setRole(null);
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [applyUserData]);
+
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setUser(null);
+      setRole(null);
     }
   };
 
-  const logout = async () => {
-    await signOut(auth);
+  const refreshUser = async () => {
+    await fetchUser();
   };
 
   return (

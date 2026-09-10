@@ -1,4 +1,9 @@
-import { Timestamp } from 'firebase/firestore';
+// ─── Timestamps ─────────────────────────────────────────────────────────────
+
+export type DBTimestamp =
+  | string
+  | Date
+  | { toDate?: () => Date; toMillis?: () => number };
 
 // ─── User ────────────────────────────────────────────────────────────────────
 
@@ -9,8 +14,9 @@ export interface AppUser {
   name: string;
   email: string;
   role: UserRole;
-  createdAt: Timestamp;
+  createdAt: DBTimestamp;
   emailVerified: boolean;
+  image?: string;
 }
 
 // ─── Category ────────────────────────────────────────────────────────────────
@@ -27,7 +33,7 @@ export interface Category {
   slug: CategorySlug;
   description: string;
   isOpen: boolean;
-  createdAt: Timestamp;
+  createdAt: DBTimestamp;
 }
 
 // ─── Submission ──────────────────────────────────────────────────────────────
@@ -47,8 +53,8 @@ export interface Submission {
   fileType: FileType;
   status: SubmissionStatus;
   voteCount: number;
-  createdAt: Timestamp;
-  approvedAt: Timestamp | null;
+  createdAt: DBTimestamp;
+  approvedAt: DBTimestamp | null;
 }
 
 // ─── Vote ─────────────────────────────────────────────────────────────────────
@@ -56,9 +62,10 @@ export interface Submission {
 export interface Vote {
   id: string;
   userId: string;
+  userName?: string;
   submissionId: string;
   categoryId: CategorySlug;
-  createdAt: Timestamp;
+  createdAt: DBTimestamp;
 }
 
 // ─── Competition Settings ─────────────────────────────────────────────────────
@@ -66,8 +73,8 @@ export interface Vote {
 export interface CompetitionSettings {
   submissionsOpen: boolean;
   votingOpen: boolean;
-  submissionDeadline: Timestamp | null;
-  votingDeadline: Timestamp | null;
-  updatedAt?: Timestamp;
+  submissionDeadline: DBTimestamp | null;
+  votingDeadline: DBTimestamp | null;
+  updatedAt?: DBTimestamp;
   updatedBy?: string;
 }

@@ -1,16 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useState, useEffect, useCallback } from 'react';
+import type { CompetitionSettings } from '@/lib/types';
 import {
-  COLLECTIONS,
-  SETTINGS_DOCS,
   DEFAULT_COMPETITION_SETTINGS,
   isSubmissionsActive,
   isVotingActive,
-} from '@/lib/firestore';
-import type { CompetitionSettings } from '@/lib/types';
+} from '@/lib/db';
 
 export interface UseCompetitionSettingsReturn {
   settings: CompetitionSettings;
@@ -22,49 +18,74 @@ export interface UseCompetitionSettingsReturn {
   votingDeadlineDate: Date | null;
   hasSubmissionDeadlinePassed: boolean;
   hasVotingDeadlinePassed: boolean;
+  reloadSettings: () => Promise<void>;
 }
 
 export function useCompetitionSettings(): UseCompetitionSettingsReturn {
   const [settings, setSettings] = useState<CompetitionSettings>(DEFAULT_COMPETITION_SETTINGS);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasSubmissionDeadlinePassed, setHasSubmissionDeadlinePassed] = useState(false);
+  const [hasVotingDeadlinePassed, setHasVotingDeadlinePassed] = useState(false);
+
+  const applySettings = useCallback((newSettings: CompetitionSettings) => {
+    setSettings(newSettings);
+    const subDate = newSettings.submissionDeadline
+      ? new Date(newSettings.submissionDeadline as string | Date)
+      : null;
+    const voteDate = newSettings.votingDeadline
+      ? new Date(newSettings.votingDeadline as string | Date)
+      : null;
+
+    const currentTime = Date.now();
+    setHasSubmissionDeadlinePassed(Boolean(subDate && subDate.getTime() <= currentTime));
+    setHasVotingDeadlinePassed(Boolean(voteDate && voteDate.getTime() <= currentTime));
+  }, []);
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/settings', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to load competition settings');
+      const data = await res.json();
+      applySettings(data.settings || DEFAULT_COMPETITION_SETTINGS);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching competition settings:', err);
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [applySettings]);
 
   useEffect(() => {
-    const docRef = doc(db, COLLECTIONS.SETTINGS, SETTINGS_DOCS.COMPETITION);
-    getDoc(docRef)
-      .then((snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          setSettings({
-            submissionsOpen: data.submissionsOpen ?? true,
-            votingOpen: data.votingOpen ?? true,
-            submissionDeadline: data.submissionDeadline ?? null,
-            votingDeadline: data.votingDeadline ?? null,
-            updatedAt: data.updatedAt,
-            updatedBy: data.updatedBy,
-          });
-        } else {
-          setSettings(DEFAULT_COMPETITION_SETTINGS);
-        }
+    let isMounted = true;
+    fetch('/api/settings', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : { settings: DEFAULT_COMPETITION_SETTINGS }))
+      .then((data) => {
+        if (!isMounted) return;
+        applySettings(data.settings || DEFAULT_COMPETITION_SETTINGS);
+        setError(null);
         setLoading(false);
       })
       .catch((err) => {
+        if (!isMounted) return;
         console.error('Error fetching competition settings:', err);
-        setError(err.message);
+        setError((err as Error).message);
         setLoading(false);
       });
-  }, []);
 
-  const submissionDeadlineDate = settings.submissionDeadline ? settings.submissionDeadline.toDate() : null;
-  const votingDeadlineDate = settings.votingDeadline ? settings.votingDeadline.toDate() : null;
+    return () => {
+      isMounted = false;
+    };
+  }, [applySettings]);
 
-  const hasSubmissionDeadlinePassed = Boolean(
-    submissionDeadlineDate && submissionDeadlineDate.getTime() <= Date.now()
-  );
+  const submissionDeadlineDate = settings.submissionDeadline
+    ? new Date(settings.submissionDeadline as string | Date)
+    : null;
 
-  const hasVotingDeadlinePassed = Boolean(
-    votingDeadlineDate && votingDeadlineDate.getTime() <= Date.now()
-  );
+  const votingDeadlineDate = settings.votingDeadline
+    ? new Date(settings.votingDeadline as string | Date)
+    : null;
 
   const isSubmissionsOpen = isSubmissionsActive(settings);
   const isVotingOpen = isVotingActive(settings);
@@ -79,5 +100,6 @@ export function useCompetitionSettings(): UseCompetitionSettingsReturn {
     votingDeadlineDate,
     hasSubmissionDeadlinePassed,
     hasVotingDeadlinePassed,
+    reloadSettings: fetchSettings,
   };
 }

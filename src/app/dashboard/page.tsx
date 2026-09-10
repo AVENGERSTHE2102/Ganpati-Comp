@@ -1,11 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
-import { sendEmailVerification } from 'firebase/auth';
-import { db } from '@/lib/firebase';
-import { COLLECTIONS, CATEGORY_SEEDS } from '@/lib/firestore';
+import { CATEGORY_SEEDS } from '@/lib/db';
 import type { Submission, CategorySlug, AppUser, SubmissionStatus } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -13,12 +10,10 @@ import { StatusBadge } from '@/components/admin/StatusBadge';
 import {
   User,
   CheckCircle2,
-  AlertTriangle,
   Clock,
   XCircle,
   ThumbsUp,
   FileText,
-  Image as ImageIcon,
   Video,
   Eye,
   PlusCircle,
@@ -28,7 +23,6 @@ import {
   X,
   Mail,
   ShieldAlert,
-  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -38,9 +32,16 @@ function getCategoryName(slug: CategorySlug): string {
   return CATEGORY_SEEDS.find((c) => c.id === slug)?.name ?? slug;
 }
 
-function formatDate(ts: { toDate?: () => Date } | null): string {
-  if (!ts || typeof ts.toDate !== 'function') return '—';
-  return ts.toDate().toLocaleDateString('en-IN', {
+function formatDate(ts: string | Date | { toDate?: () => Date } | null): string {
+  if (!ts) return '—';
+  const date =
+    typeof ts === 'object' && ts !== null && 'toDate' in ts && typeof ts.toDate === 'function'
+      ? ts.toDate()
+      : new Date(ts as string | Date);
+
+  if (isNaN(date.getTime())) return '—';
+
+  return date.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -83,7 +84,7 @@ function SubmissionDetailModal({ submission, onClose }: DetailModalProps) {
             <div className="flex items-center gap-3 sm:gap-4 text-xs text-foreground/50 mt-1.5 flex-wrap">
               <span className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5" />
-                Submitted on {formatDate(submission.createdAt as never)}
+                Submitted on {formatDate(submission.createdAt)}
               </span>
               <span className="flex items-center gap-1 font-semibold text-purple-600 dark:text-purple-400">
                 <ThumbsUp className="w-3.5 h-3.5" />
@@ -198,7 +199,7 @@ function SubmissionDetailModal({ submission, onClose }: DetailModalProps) {
 // ─── Dashboard Component ──────────────────────────────────────────────────────
 
 function ParticipantDashboardContent() {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<AppUser | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,84 +207,38 @@ function ParticipantDashboardContent() {
   const [activeTab, setActiveTab] = useState<SubmissionStatus | 'all'>('all');
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
 
-  // Email verification state
-  const [sendingVerification, setSendingVerification] = useState(false);
-  const [checkingVerification, setCheckingVerification] = useState(false);
-  const [verificationSent, setVerificationSent] = useState(false);
-  const [verificationError, setVerificationError] = useState('');
-
-  const loadData = useCallback(async () => {
+  useEffect(() => {
     if (!user) return;
-    setLoading(true);
-    setError('');
-
-    try {
-      // Fetch independent dashboard data in parallel to reduce route latency.
-      const userDocRef = doc(db, COLLECTIONS.USERS, user.uid);
-      const submissionsQuery = query(
-        collection(db, COLLECTIONS.SUBMISSIONS),
-        where('participantId', '==', user.uid)
-      );
-      const [userSnap, snap] = await Promise.all([
-        getDoc(userDocRef),
-        getDocs(submissionsQuery),
-      ]);
-      if (userSnap.exists()) {
-        setProfile(userSnap.data() as AppUser);
-      }
-
-      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Submission));
-
-      // Client-side sort by createdAt descending
-      docs.sort((a, b) => {
-        const timeA = a.createdAt?.toMillis?.() ?? 0;
-        const timeB = b.createdAt?.toMillis?.() ?? 0;
-        return timeB - timeA;
+    let isMounted = true;
+    fetch(`/api/submissions?participantId=${user.uid}&status=all`, {
+      cache: 'no-store',
+    })
+      .then((res) => (res.ok ? res.json() : { submissions: [] }))
+      .then((data) => {
+        if (!isMounted) return;
+        setSubmissions(data.submissions || []);
+        setProfile({
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          role: (user.role as 'participant' | 'admin') || 'participant',
+          createdAt: new Date().toISOString(),
+          emailVerified: user.emailVerified,
+          image: user.photoURL,
+        });
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.error(err);
+        setError((err as Error).message || 'Failed to load dashboard data.');
+        setLoading(false);
       });
 
-      setSubmissions(docs);
-    } catch (err: unknown) {
-      console.error(err);
-      setError((err as Error).message || 'Failed to load submissions.');
-    } finally {
-      setLoading(false);
-    }
-  }, [user, refreshUser]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleCheckVerification = async () => {
-    if (!user) return;
-    setCheckingVerification(true);
-    setVerificationError('');
-    try {
-      await refreshUser();
-      await loadData();
-    } catch (err: unknown) {
-      console.error(err);
-      setVerificationError((err as Error).message || 'Failed to check verification status.');
-    } finally {
-      setCheckingVerification(false);
-    }
-  };
-
-  const handleResendVerification = async () => {
-    if (!user) return;
-    setSendingVerification(true);
-    setVerificationError('');
-    try {
-      await sendEmailVerification(user);
-      setVerificationSent(true);
-      setTimeout(() => setVerificationSent(false), 6000);
-    } catch (err: unknown) {
-      console.error(err);
-      setVerificationError((err as Error).message || 'Failed to send verification email.');
-    } finally {
-      setSendingVerification(false);
-    }
-  };
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   // Stats calculation
   const totalSubmissions = submissions.length;
@@ -298,7 +253,8 @@ function ParticipantDashboardContent() {
       ? submissions
       : submissions.filter((s) => s.status === activeTab);
 
-  const participantName = profile?.name || user?.displayName || user?.email?.split('@')[0] || 'Participant';
+  const participantName =
+    profile?.name || user?.displayName || user?.email?.split('@')[0] || 'Participant';
   const isEmailVerified = Boolean(user?.emailVerified);
 
   return (
@@ -307,9 +263,17 @@ function ParticipantDashboardContent() {
       <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-black/5 dark:border-white/5 shadow-sm p-5 sm:p-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6">
           <div className="flex items-start gap-3.5 sm:gap-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-saffron/15 text-saffron flex items-center justify-center flex-shrink-0">
-              <User className="w-7 h-7 sm:w-8 sm:h-8" />
-            </div>
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={participantName}
+                className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border border-saffron/30 flex-shrink-0"
+              />
+            ) : (
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-saffron/15 text-saffron flex items-center justify-center flex-shrink-0">
+                <User className="w-7 h-7 sm:w-8 sm:h-8" />
+              </div>
+            )}
             <div className="min-w-0">
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-burgundy dark:text-foreground truncate">
@@ -348,62 +312,15 @@ function ParticipantDashboardContent() {
         {/* Email Verification Status Card */}
         <div className="mt-5 sm:mt-6 pt-5 sm:pt-6 border-t border-foreground/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
-            {isEmailVerified ? (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 flex-shrink-0">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Verified</span>
-              </div>
-            ) : (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex-shrink-0">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                <span>Not Verified</span>
-              </div>
-            )}
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 flex-shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{isEmailVerified ? 'Verified Account' : 'Google Account'}</span>
+            </div>
             <p className="text-xs text-foreground/60 leading-relaxed">
-              {isEmailVerified
-                ? 'Your account is verified and eligible to cast votes in all categories.'
-                : 'Please verify your email address to enable voting on entries.'}
+              Your account is authenticated with Google and eligible to cast votes in all categories.
             </p>
           </div>
-
-          {!isEmailVerified && (
-            <div className="flex items-center gap-3 flex-wrap self-start sm:self-auto">
-              <button
-                onClick={handleCheckVerification}
-                disabled={checkingVerification}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-foreground/15 text-xs font-semibold hover:bg-foreground/5 text-foreground transition-colors disabled:opacity-50"
-                title="Check if you have already clicked the verification link"
-              >
-                <RefreshCw className={cn("w-3.5 h-3.5", checkingVerification && "animate-spin text-saffron")} />
-                <span>{checkingVerification ? 'Checking...' : 'Check Status'}</span>
-              </button>
-
-              <button
-                onClick={handleResendVerification}
-                disabled={sendingVerification || verificationSent}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-saffron hover:text-saffron-light disabled:opacity-50 transition-colors"
-              >
-                {sendingVerification ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Sending email...</span>
-                  </>
-                ) : verificationSent ? (
-                  <span className="text-green-600">Verification email sent!</span>
-                ) : (
-                  <>
-                    <Mail className="w-3.5 h-3.5" />
-                    <span>Resend Email</span>
-                  </>
-                )}
-              </button>
-            </div>
-          )}
         </div>
-
-        {verificationError && (
-          <p className="mt-2 text-xs text-red-600 dark:text-red-400">{verificationError}</p>
-        )}
       </div>
 
       {/* ── Stats Overview ─────────────────────────────────────────────────── */}
@@ -508,9 +425,7 @@ function ParticipantDashboardContent() {
               <PlusCircle className="w-8 h-8" />
             </div>
             <h3 className="text-xl font-serif font-bold text-foreground">
-              {activeTab === 'all'
-                ? 'No Submissions Yet'
-                : `No ${activeTab} Submissions`}
+              {activeTab === 'all' ? 'No Submissions Yet' : `No ${activeTab} Submissions`}
             </h3>
             <p className="text-sm text-foreground/60 leading-relaxed">
               {activeTab === 'all'
@@ -622,7 +537,7 @@ function ParticipantDashboardContent() {
                     <div className="pt-3 border-t border-foreground/10 flex items-center justify-between text-xs text-foreground/50">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
-                        <span>{formatDate(sub.createdAt as never)}</span>
+                        <span>{formatDate(sub.createdAt)}</span>
                       </div>
 
                       <div className="flex items-center gap-3">

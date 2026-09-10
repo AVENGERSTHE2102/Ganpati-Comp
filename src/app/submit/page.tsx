@@ -4,10 +4,8 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
-import { db, storage } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { COLLECTIONS, CATEGORY_SEEDS } from '@/lib/firestore';
+import { upload } from '@vercel/blob/client';
+import { CATEGORY_SEEDS } from '@/lib/db';
 import type { CategorySlug, FileType } from '@/lib/types';
 import { useCompetitionSettings } from '@/hooks/useCompetitionSettings';
 import {
@@ -16,7 +14,7 @@ import {
   Loader2,
   X,
   FileText,
-  Image,
+  Image as ImageIcon,
   Video,
   Lock,
   Clock,
@@ -33,46 +31,23 @@ function detectFileType(file: File): FileType {
 }
 
 const FILE_TYPE_ICON = {
-  image: Image,
+  image: ImageIcon,
   video: Video,
   pdf: FileText,
   other: FileText,
 };
 
 const ALLOWED_TYPES = [
-  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
-  'video/mp4', 'video/quicktime', 'video/webm',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
   'application/pdf',
 ];
 const MAX_FILE_SIZE_MB = 50;
-
-function getSubmissionErrorMessage(error: unknown): string {
-  const code = (error as { code?: string })?.code;
-  const message = error instanceof Error ? error.message : String(error ?? '');
-
-  if (
-    code === 'not-found' &&
-    message.toLowerCase().includes('database (default) does not exist')
-  ) {
-    return 'Submissions are temporarily unavailable because the Firestore database has not been created for this Firebase project. Please contact the administrator.';
-  }
-
-  if (code === 'permission-denied') {
-    return 'You do not have permission to submit this entry. Please make sure you are signed in and your account is allowed to participate.';
-  }
-
-  if (code === 'storage/unauthorized') {
-    return 'File upload is not authorized. Please sign in again and try once more.';
-  }
-
-  if (code === 'storage/quota-exceeded') {
-    return 'File upload is temporarily unavailable because storage capacity has been reached.';
-  }
-
-  return message || 'An unexpected error occurred. Please try again.';
-}
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 function SubmitForm() {
   const { user } = useAuth();
@@ -141,57 +116,53 @@ function SubmitForm() {
     setError('');
 
     const validationError = validateForm();
-    if (validationError) { setError(validationError); return; }
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
-    if (!user) { setError('You must be logged in.'); return; }
+    if (!user) {
+      setError('You must be logged in.');
+      return;
+    }
 
     setLoading(true);
 
     try {
-      // 1. Upload file to Firebase Storage
+      // 1. Upload file directly to Vercel Blob
       const fileType = detectFileType(file!);
-      const ext = file!.name.split('.').pop();
-      const storagePath = `submissions/${user.uid}/${Date.now()}.${ext}`;
-      const storageRef = ref(storage, storagePath);
-      const uploadTask = uploadBytesResumable(storageRef, file!);
-
-      const fileUrl: string = await new Promise((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            setUploadProgress(pct);
-          },
-          reject,
-          async () => {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(url);
-          }
-        );
+      const newBlob = await upload(file!.name, file!, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+        onUploadProgress: (progress) => {
+          setUploadProgress(Math.round(progress.percentage));
+        },
       });
 
-      // 2. Get participant name from Firestore user doc (fallback to displayName / email)
-      const participantName = user.displayName || user.email?.split('@')[0] || 'Participant';
+      const fileUrl = newBlob.url;
 
-      // 3. Create submission document in Firestore
-      await addDoc(collection(db, COLLECTIONS.SUBMISSIONS), {
-        participantId: user.uid,
-        participantName,
-        categoryId: formData.categoryId as CategorySlug,
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        fileUrl,
-        fileType,
-        status: 'pending',       // always starts as pending — only admin can approve
-        voteCount: 0,
-        createdAt: serverTimestamp(),
-        approvedAt: null,
+      // 2. Create submission record in MongoDB via API
+      const res = await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryId: formData.categoryId,
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          fileUrl,
+          fileType,
+        }),
       });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to submit entry.');
+      }
 
       setSuccess(true);
     } catch (err: unknown) {
       console.error(err);
-      setError(getSubmissionErrorMessage(err));
+      setError((err as Error).message || 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
       setUploadProgress(0);
@@ -215,7 +186,11 @@ function SubmitForm() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
-              onClick={() => { setSuccess(false); setFile(null); setFormData({ categoryId: '', title: '', description: '' }); }}
+              onClick={() => {
+                setSuccess(false);
+                setFile(null);
+                setFormData({ categoryId: '', title: '', description: '' });
+              }}
               className="w-full sm:w-auto px-6 py-2.5 rounded-full border-2 border-saffron text-saffron hover:bg-saffron hover:text-white transition-all font-medium text-sm"
             >
               Submit Another
@@ -292,7 +267,7 @@ function SubmitForm() {
         </p>
       </div>
 
-      {/* Deadline Notice (if active deadline exists) */}
+      {/* Deadline Notice */}
       {submissionDeadlineDate && (
         <div className="mb-6 p-3.5 sm:p-4 rounded-xl bg-saffron/10 border border-saffron/20 text-foreground flex items-center gap-3 text-xs sm:text-sm">
           <Clock className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 text-saffron" />
@@ -308,8 +283,10 @@ function SubmitForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-black/5 dark:border-white/5 p-5 sm:p-8 space-y-5 sm:space-y-7">
-
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-black/5 dark:border-white/5 p-5 sm:p-8 space-y-5 sm:space-y-7"
+      >
         {/* Error */}
         {error && (
           <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-3.5 sm:p-4 rounded-xl text-xs sm:text-sm">
@@ -320,26 +297,38 @@ function SubmitForm() {
 
         {/* Category */}
         <div>
-          <label className="block text-xs sm:text-sm font-semibold text-foreground/80 mb-1.5 sm:mb-2" htmlFor="categoryId">
+          <label
+            className="block text-xs sm:text-sm font-semibold text-foreground/80 mb-1.5 sm:mb-2"
+            htmlFor="categoryId"
+          >
             Competition Category <span className="text-red-500">*</span>
           </label>
           <select
             id="categoryId"
             required
             value={formData.categoryId}
-            onChange={(e) => setFormData(p => ({ ...p, categoryId: e.target.value as CategorySlug }))}
+            onChange={(e) =>
+              setFormData((p) => ({ ...p, categoryId: e.target.value as CategorySlug }))
+            }
             className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-foreground/20 rounded-xl focus:ring-2 focus:ring-saffron focus:border-transparent outline-none transition-all bg-transparent dark:bg-black/20 text-foreground"
           >
-            <option value="" disabled>Select a category...</option>
+            <option value="" disabled>
+              Select a category...
+            </option>
             {CATEGORY_SEEDS.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
             ))}
           </select>
         </div>
 
         {/* Title */}
         <div>
-          <label className="block text-xs sm:text-sm font-semibold text-foreground/80 mb-1.5 sm:mb-2" htmlFor="title">
+          <label
+            className="block text-xs sm:text-sm font-semibold text-foreground/80 mb-1.5 sm:mb-2"
+            htmlFor="title"
+          >
             Submission Title <span className="text-red-500">*</span>
           </label>
           <input
@@ -348,15 +337,20 @@ function SubmitForm() {
             required
             placeholder="Give your submission a memorable title"
             value={formData.title}
-            onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))}
+            onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
             className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-foreground/20 rounded-xl focus:ring-2 focus:ring-saffron focus:border-transparent outline-none transition-all dark:bg-black/20 text-foreground"
           />
-          <p className="text-[11px] sm:text-xs text-foreground/50 mt-1">{formData.title.length}/80 characters</p>
+          <p className="text-[11px] sm:text-xs text-foreground/50 mt-1">
+            {formData.title.length}/80 characters
+          </p>
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-xs sm:text-sm font-semibold text-foreground/80 mb-1.5 sm:mb-2" htmlFor="description">
+          <label
+            className="block text-xs sm:text-sm font-semibold text-foreground/80 mb-1.5 sm:mb-2"
+            htmlFor="description"
+          >
             Description <span className="text-red-500">*</span>
           </label>
           <textarea
@@ -365,7 +359,7 @@ function SubmitForm() {
             rows={4}
             placeholder="Tell us about your submission..."
             value={formData.description}
-            onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
+            onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
             className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-foreground/20 rounded-xl focus:ring-2 focus:ring-saffron focus:border-transparent outline-none transition-all dark:bg-black/20 resize-none text-foreground"
           />
         </div>
@@ -379,16 +373,24 @@ function SubmitForm() {
           {!file ? (
             <div
               onDrop={handleDrop}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
               onDragLeave={() => setDragOver(false)}
               onClick={() => fileInputRef.current?.click()}
               className={`relative flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-6 sm:p-10 cursor-pointer transition-all
-                ${dragOver
-                  ? 'border-saffron bg-saffron/5 scale-[1.01]'
-                  : 'border-foreground/20 hover:border-saffron hover:bg-saffron/5'
+                ${
+                  dragOver
+                    ? 'border-saffron bg-saffron/5 scale-[1.01]'
+                    : 'border-foreground/20 hover:border-saffron hover:bg-saffron/5'
                 }`}
             >
-              <UploadCloud className={`w-8 h-8 sm:w-10 sm:h-10 mb-2.5 sm:mb-3 transition-colors ${dragOver ? 'text-saffron' : 'text-foreground/40'}`} />
+              <UploadCloud
+                className={`w-8 h-8 sm:w-10 sm:h-10 mb-2.5 sm:mb-3 transition-colors ${
+                  dragOver ? 'text-saffron' : 'text-foreground/40'
+                }`}
+              />
               <p className="text-xs sm:text-sm font-medium text-foreground/80 text-center">
                 Drag & drop or <span className="text-saffron underline underline-offset-2">browse files</span>
               </p>
@@ -400,7 +402,9 @@ function SubmitForm() {
                 type="file"
                 className="hidden"
                 accept={ALLOWED_TYPES.join(',')}
-                onChange={(e) => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0]); }}
+                onChange={(e) => {
+                  if (e.target.files?.[0]) handleFileSelect(e.target.files[0]);
+                }}
               />
             </div>
           ) : (
@@ -410,7 +414,9 @@ function SubmitForm() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm font-medium truncate">{file.name}</p>
-                <p className="text-[11px] sm:text-xs text-foreground/50">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                <p className="text-[11px] sm:text-xs text-foreground/50">
+                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                </p>
               </div>
               <button
                 type="button"
@@ -428,7 +434,7 @@ function SubmitForm() {
         {loading && uploadProgress > 0 && uploadProgress < 100 && (
           <div>
             <div className="flex justify-between text-xs text-foreground/60 mb-1">
-              <span>Uploading...</span>
+              <span>Uploading to storage...</span>
               <span>{uploadProgress}%</span>
             </div>
             <div className="w-full bg-foreground/10 rounded-full h-2">
@@ -449,7 +455,11 @@ function SubmitForm() {
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-              <span>{uploadProgress > 0 && uploadProgress < 100 ? `Uploading ${uploadProgress}%...` : 'Submitting...'}</span>
+              <span>
+                {uploadProgress > 0 && uploadProgress < 100
+                  ? `Uploading ${uploadProgress}%...`
+                  : 'Submitting...'}
+              </span>
             </>
           ) : (
             <>
@@ -466,8 +476,6 @@ function SubmitForm() {
     </div>
   );
 }
-
-// ─── Page (protected) ─────────────────────────────────────────────────────────
 
 export default function SubmitPage() {
   return (

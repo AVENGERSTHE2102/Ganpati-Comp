@@ -14,7 +14,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import type { Submission, CategorySlug } from '@/lib/types';
-import { CATEGORY_SEEDS } from '@/lib/firestore';
+import { CATEGORY_SEEDS } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -24,9 +24,14 @@ function categoryName(slug: CategorySlug): string {
   return CATEGORY_SEEDS.find((c) => c.id === slug)?.name ?? slug;
 }
 
-function formatDate(ts: { toDate?: () => Date } | null): string {
-  if (!ts || typeof ts.toDate !== 'function') return '';
-  return ts.toDate().toLocaleDateString('en-IN', {
+function formatDate(ts: string | Date | { toDate?: () => Date } | null): string {
+  if (!ts) return '';
+  const date =
+    typeof ts === 'object' && ts !== null && 'toDate' in ts && typeof ts.toDate === 'function'
+      ? ts.toDate()
+      : new Date(ts as string | Date);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

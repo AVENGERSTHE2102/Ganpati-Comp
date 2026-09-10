@@ -1,36 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, getCountFromServer, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { COLLECTIONS, CATEGORY_SEEDS } from '@/lib/firestore';
+import { CATEGORY_SEEDS } from '@/lib/db';
 import type { CategorySlug } from '@/lib/types';
 import { CategoryCard } from '@/components/gallery/CategoryCard';
 import { Loader2 } from 'lucide-react';
 
 export default function CategoriesPage() {
-  // Count approved submissions per category
   const [counts, setCounts] = useState<Partial<Record<CategorySlug, number>>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchCounts() {
       try {
-        const results = await Promise.all(
-          CATEGORY_SEEDS.map(async (category) => {
-            const count = await getCountFromServer(
-              query(
-                collection(db, COLLECTIONS.SUBMISSIONS),
-                where('status', '==', 'approved'),
-                where('categoryId', '==', category.id)
-              )
-            );
-            return [category.id, count.data().count] as const;
-          })
-        );
-        setCounts(Object.fromEntries(results) as Partial<Record<CategorySlug, number>>);
+        const res = await fetch('/api/categories', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          setCounts(data.counts || {});
+        }
       } catch (e) {
-        console.error(e);
+        console.error('Error loading category counts:', e);
       } finally {
         setLoading(false);
       }

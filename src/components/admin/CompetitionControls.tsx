@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Timestamp } from 'firebase/firestore';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompetitionSettings } from '@/hooks/useCompetitionSettings';
-import { updateCompetitionSettings } from '@/lib/firestore';
 import {
   Sliders,
   CheckCircle,
@@ -41,26 +39,26 @@ export function CompetitionControls() {
     hasVotingDeadlinePassed,
     isSubmissionsOpen,
     isVotingOpen,
+    reloadSettings,
   } = useCompetitionSettings();
 
-  const [submissionsOpen, setSubmissionsOpen] = useState(true);
-  const [votingOpen, setVotingOpen] = useState(true);
-  const [submissionDeadlineInput, setSubmissionDeadlineInput] = useState('');
-  const [votingDeadlineInput, setVotingDeadlineInput] = useState('');
+  const [userEdits, setUserEdits] = useState<{
+    submissionsOpen?: boolean;
+    votingOpen?: boolean;
+    submissionDeadlineInput?: string;
+    votingDeadlineInput?: string;
+  } | null>(null);
+
+  const submissionsOpen = userEdits?.submissionsOpen ?? settings.submissionsOpen;
+  const votingOpen = userEdits?.votingOpen ?? settings.votingOpen;
+  const submissionDeadlineInput =
+    userEdits?.submissionDeadlineInput ?? formatToDatetimeLocal(submissionDeadlineDate);
+  const votingDeadlineInput =
+    userEdits?.votingDeadlineInput ?? formatToDatetimeLocal(votingDeadlineDate);
 
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
-  // Sync internal state when settings load or update in Firestore
-  useEffect(() => {
-    if (!settingsLoading) {
-      setSubmissionsOpen(settings.submissionsOpen);
-      setVotingOpen(settings.votingOpen);
-      setSubmissionDeadlineInput(formatToDatetimeLocal(submissionDeadlineDate));
-      setVotingDeadlineInput(formatToDatetimeLocal(votingDeadlineDate));
-    }
-  }, [settingsLoading, settings, submissionDeadlineDate, votingDeadlineDate]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,21 +68,32 @@ export function CompetitionControls() {
 
     try {
       const submissionDeadline = submissionDeadlineInput
-        ? Timestamp.fromDate(new Date(submissionDeadlineInput))
+        ? new Date(submissionDeadlineInput).toISOString()
         : null;
 
       const votingDeadline = votingDeadlineInput
-        ? Timestamp.fromDate(new Date(votingDeadlineInput))
+        ? new Date(votingDeadlineInput).toISOString()
         : null;
 
-      await updateCompetitionSettings({
-        submissionsOpen,
-        votingOpen,
-        submissionDeadline,
-        votingDeadline,
-        updatedBy: user?.email || user?.uid || 'admin',
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionsOpen,
+          votingOpen,
+          submissionDeadline,
+          votingDeadline,
+          updatedBy: user?.email || user?.uid || 'admin',
+        }),
       });
 
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update competition settings.');
+      }
+
+      setUserEdits(null);
+      await reloadSettings();
       setSuccessMessage('Competition settings updated successfully!');
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err: unknown) {
@@ -194,7 +203,12 @@ export function CompetitionControls() {
                 type="button"
                 role="switch"
                 aria-checked={submissionsOpen}
-                onClick={() => setSubmissionsOpen(!submissionsOpen)}
+                onClick={() =>
+                  setUserEdits((prev) => ({
+                    ...prev,
+                    submissionsOpen: !submissionsOpen,
+                  }))
+                }
                 className={cn(
                   'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-2',
                   submissionsOpen ? 'bg-saffron' : 'bg-foreground/20'
@@ -223,7 +237,12 @@ export function CompetitionControls() {
                     id="submissionDeadline"
                     type="datetime-local"
                     value={submissionDeadlineInput}
-                    onChange={(e) => setSubmissionDeadlineInput(e.target.value)}
+                    onChange={(e) =>
+                      setUserEdits((prev) => ({
+                        ...prev,
+                        submissionDeadlineInput: e.target.value,
+                      }))
+                    }
                     className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-foreground/15 bg-white dark:bg-zinc-800 text-foreground focus:border-saffron focus:ring-1 focus:ring-saffron outline-none transition-all"
                   />
                   <Calendar className="w-4 h-4 text-foreground/40 absolute left-3 top-2.5" />
@@ -231,7 +250,12 @@ export function CompetitionControls() {
                 {submissionDeadlineInput && (
                   <button
                     type="button"
-                    onClick={() => setSubmissionDeadlineInput('')}
+                    onClick={() =>
+                      setUserEdits((prev) => ({
+                        ...prev,
+                        submissionDeadlineInput: '',
+                      }))
+                    }
                     className="px-2.5 py-2 text-xs border border-foreground/15 rounded-lg hover:bg-foreground/5 text-foreground/60 hover:text-red-500 transition-colors flex items-center gap-1"
                     title="Clear deadline"
                   >
@@ -266,7 +290,12 @@ export function CompetitionControls() {
                 type="button"
                 role="switch"
                 aria-checked={votingOpen}
-                onClick={() => setVotingOpen(!votingOpen)}
+                onClick={() =>
+                  setUserEdits((prev) => ({
+                    ...prev,
+                    votingOpen: !votingOpen,
+                  }))
+                }
                 className={cn(
                   'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-2',
                   votingOpen ? 'bg-purple-600' : 'bg-foreground/20'
@@ -295,7 +324,12 @@ export function CompetitionControls() {
                     id="votingDeadline"
                     type="datetime-local"
                     value={votingDeadlineInput}
-                    onChange={(e) => setVotingDeadlineInput(e.target.value)}
+                    onChange={(e) =>
+                      setUserEdits((prev) => ({
+                        ...prev,
+                        votingDeadlineInput: e.target.value,
+                      }))
+                    }
                     className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-foreground/15 bg-white dark:bg-zinc-800 text-foreground focus:border-saffron focus:ring-1 focus:ring-saffron outline-none transition-all"
                   />
                   <Calendar className="w-4 h-4 text-foreground/40 absolute left-3 top-2.5" />
@@ -303,7 +337,12 @@ export function CompetitionControls() {
                 {votingDeadlineInput && (
                   <button
                     type="button"
-                    onClick={() => setVotingDeadlineInput('')}
+                    onClick={() =>
+                      setUserEdits((prev) => ({
+                        ...prev,
+                        votingDeadlineInput: '',
+                      }))
+                    }
                     className="px-2.5 py-2 text-xs border border-foreground/15 rounded-lg hover:bg-foreground/5 text-foreground/60 hover:text-red-500 transition-colors flex items-center gap-1"
                     title="Clear deadline"
                   >
@@ -327,7 +366,7 @@ export function CompetitionControls() {
           <div className="flex items-center gap-2 text-xs text-foreground/50">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>
-              All settings are synced in real-time and enforced via Firestore Security Rules.
+              All settings are saved in MongoDB and enforced on the server.
             </span>
           </div>
 

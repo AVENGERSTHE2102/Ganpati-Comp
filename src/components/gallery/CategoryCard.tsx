@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Home, Video, BookOpen, GraduationCap, ArrowRight, LucideIcon } from 'lucide-react';
 import type { CategorySlug } from '@/lib/types';
-import { CATEGORY_SEEDS } from '@/lib/firestore';
+import { CATEGORY_SEEDS } from '@/lib/db';
 
 const CATEGORY_ICONS: Record<CategorySlug, LucideIcon> = {
   'home-decor':    Home,

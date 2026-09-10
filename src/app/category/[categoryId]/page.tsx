@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { COLLECTIONS, CATEGORY_SEEDS } from '@/lib/firestore';
+import { CATEGORY_SEEDS } from '@/lib/db';
 import type { Submission, CategorySlug } from '@/lib/types';
 import { SubmissionCard } from '@/components/gallery/SubmissionCard';
 import { CategoryCard } from '@/components/gallery/CategoryCard';
@@ -16,15 +14,15 @@ import { cn } from '@/lib/utils';
 const ALL_SLUGS = CATEGORY_SEEDS.map((c) => c.id) as CategorySlug[];
 
 export default function CategoryPage() {
-  const params     = useParams<{ categoryId: string }>();
-  const router     = useRouter();
+  const params = useParams<{ categoryId: string }>();
+  const router = useRouter();
   const categoryId = params.categoryId as CategorySlug;
-  const cat        = CATEGORY_SEEDS.find((c) => c.id === categoryId);
+  const cat = CATEGORY_SEEDS.find((c) => c.id === categoryId);
 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState('');
-  const [sortBy, setSortBy]           = useState<'newest' | 'votes'>('newest');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'votes'>('newest');
 
   const {
     votedCategories,
@@ -36,6 +34,7 @@ export default function CategoryPage() {
     ready,
     isVotingOpen,
     votingDeadlineDate,
+    hasVotingDeadlinePassed,
   } = useVoting();
 
   // Redirect unknown slugs
@@ -43,57 +42,63 @@ export default function CategoryPage() {
     if (!ALL_SLUGS.includes(categoryId)) router.replace('/categories');
   }, [categoryId, router]);
 
-  // Real-time listener for approved submissions (provides backend-confirmed voteCount)
+  const reloadSubmissions = useCallback(async () => {
+    if (!cat) return;
+    try {
+      const res = await fetch(
+        `/api/submissions?categoryId=${categoryId}&status=approved&sort=${sortBy}`,
+        { cache: 'no-store' }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setSubmissions(data.submissions || []);
+      }
+    } catch {
+      // ignore
+    }
+  }, [cat, categoryId, sortBy]);
+
   useEffect(() => {
     if (!cat) return;
-    setLoading(true);
-    setError('');
+    let isMounted = true;
 
-    const q = query(
-      collection(db, COLLECTIONS.SUBMISSIONS),
-      where('status', '==', 'approved'),
-      where('categoryId', '==', categoryId)
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
-        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Submission));
-        setSubmissions(docs);
+    fetch(
+      `/api/submissions?categoryId=${categoryId}&status=approved&sort=${sortBy}`,
+      { cache: 'no-store' }
+    )
+      .then((res) => (res.ok ? res.json() : { submissions: [] }))
+      .then((data) => {
+        if (!isMounted) return;
+        setSubmissions(data.submissions || []);
         setLoading(false);
-      },
-      (err) => {
+      })
+      .catch((err) => {
+        if (!isMounted) return;
         console.error('Error fetching submissions:', err);
-        setError(err.message);
+        setError((err as Error).message);
         setLoading(false);
-      }
-    );
+      });
 
-    return () => unsubscribe();
-  }, [cat, categoryId]);
+    return () => {
+      isMounted = false;
+    };
+  }, [cat, categoryId, sortBy]);
 
-  // Vote handler — purely awaits the backend transaction without modifying counts locally
+  // Vote handler
   const handleVote = useCallback(
     async (submissionId: string, catId: CategorySlug) => {
       await vote(submissionId, catId);
+      await reloadSubmissions();
     },
-    [vote]
+    [vote, reloadSubmissions]
   );
 
   const sorted = [...submissions].sort((a, b) => {
     if (sortBy === 'votes') {
       return (b.voteCount || 0) - (a.voteCount || 0);
     }
-    const aTime = a.createdAt?.toMillis
-      ? a.createdAt.toMillis()
-      : typeof a.createdAt === 'string' || typeof a.createdAt === 'number'
-      ? new Date(a.createdAt).getTime()
-      : 0;
-    const bTime = b.createdAt?.toMillis
-      ? b.createdAt.toMillis()
-      : typeof b.createdAt === 'string' || typeof b.createdAt === 'number'
-      ? new Date(b.createdAt).getTime()
-      : 0;
+    const aTime = new Date(a.createdAt as string | Date).getTime() || 0;
+    const bTime = new Date(b.createdAt as string | Date).getTime() || 0;
     return bTime - aTime;
   });
 
@@ -102,7 +107,10 @@ export default function CategoryPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* Back */}
-      <Link href="/categories" className="inline-flex items-center gap-2 text-xs sm:text-sm text-foreground/60 hover:text-saffron transition-colors mb-6 sm:mb-8">
+      <Link
+        href="/categories"
+        className="inline-flex items-center gap-2 text-xs sm:text-sm text-foreground/60 hover:text-saffron transition-colors mb-6 sm:mb-8"
+      >
         <ArrowLeft className="w-4 h-4" /> All Categories
       </Link>
 
@@ -111,7 +119,9 @@ export default function CategoryPage() {
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-burgundy dark:text-foreground mb-2 sm:mb-3">
           {cat.name}
         </h1>
-        <p className="text-foreground/60 text-sm sm:text-base md:text-lg max-w-2xl">{cat.description}</p>
+        <p className="text-foreground/60 text-sm sm:text-base md:text-lg max-w-2xl">
+          {cat.description}
+        </p>
       </div>
 
       {/* Category quick-nav */}
@@ -139,8 +149,11 @@ export default function CategoryPage() {
           <div>
             <span className="font-semibold">Voting is currently closed.</span>
             <span className="ml-1 text-foreground/70">
-              {votingDeadlineDate && votingDeadlineDate.getTime() <= Date.now()
-                ? `The voting deadline ended on ${votingDeadlineDate.toLocaleDateString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}.`
+              {hasVotingDeadlinePassed && votingDeadlineDate
+                ? `The voting deadline ended on ${votingDeadlineDate.toLocaleDateString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}.`
                 : 'The organizers have closed voting for this competition. You can still view all submissions.'}
             </span>
           </div>
@@ -157,7 +170,8 @@ export default function CategoryPage() {
               {votingDeadlineDate.toLocaleDateString(undefined, {
                 dateStyle: 'medium',
                 timeStyle: 'short',
-              })}. Each verified participant gets 1 vote in this category.
+              })}
+              . Each verified participant gets 1 vote in this category.
             </span>
           </div>
         </div>
@@ -177,7 +191,9 @@ export default function CategoryPage() {
                 onClick={() => setSortBy(s)}
                 className={cn(
                   'px-3 py-1 rounded-lg text-sm font-medium transition-all capitalize',
-                  sortBy === s ? 'bg-saffron text-white' : 'text-foreground/60 hover:bg-foreground/8'
+                  sortBy === s
+                    ? 'bg-saffron text-white'
+                    : 'text-foreground/60 hover:bg-foreground/8'
                 )}
               >
                 {s === 'votes' ? 'Most Votes' : 'Newest'}

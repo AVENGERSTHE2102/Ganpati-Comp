@@ -1,18 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  query,
-  orderBy,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { COLLECTIONS, CATEGORY_SEEDS } from '@/lib/firestore';
+import { CATEGORY_SEEDS } from '@/lib/db';
 import type { Submission, CategorySlug, SubmissionStatus } from '@/lib/types';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import {
@@ -28,7 +17,6 @@ import {
   ThumbsUp,
   FileText,
   Video,
-  Image as ImageIcon,
   ExternalLink,
   X,
   AlertTriangle,
@@ -44,9 +32,16 @@ function getCategoryName(slug: CategorySlug): string {
   return CATEGORY_SEEDS.find((c) => c.id === slug)?.name ?? slug;
 }
 
-function formatDate(ts: { toDate?: () => Date } | null): string {
-  if (!ts || typeof ts.toDate !== 'function') return '—';
-  return ts.toDate().toLocaleDateString('en-IN', {
+function formatDate(ts: string | Date | { toDate?: () => Date } | null): string {
+  if (!ts) return '—';
+  const date =
+    typeof ts === 'object' && ts !== null && 'toDate' in ts && typeof ts.toDate === 'function'
+      ? ts.toDate()
+      : new Date(ts as string | Date);
+
+  if (isNaN(date.getTime())) return '—';
+
+  return date.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -181,7 +176,7 @@ function ViewModal({ submission, onClose }: { submission: Submission; onClose: (
               </span>
               <span className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5" />
-                Submitted on {formatDate(submission.createdAt as never)}
+                Submitted on {formatDate(submission.createdAt)}
               </span>
               <span className="flex items-center gap-1 font-semibold text-purple-600 dark:text-purple-400">
                 <ThumbsUp className="w-3.5 h-3.5" />
@@ -248,7 +243,9 @@ function ViewModal({ submission, onClose }: { submission: Submission; onClose: (
               <span>Download Original Asset</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
-          ) : <div />}
+          ) : (
+            <div />
+          )}
           <button
             onClick={onClose}
             className="px-4 py-2 text-xs font-medium rounded-lg border border-foreground/15 hover:bg-foreground/5 transition-colors"
@@ -283,14 +280,12 @@ export default function AdminSubmissionsPage() {
   const [actionPending, setActionPending] = useState<ActionTarget>(null);
   const [viewingSubmission, setViewingSubmission] = useState<Submission | null>(null);
 
-  const loadSubmissions = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const fetchSubmissionsData = useCallback(async () => {
     try {
-      const snap = await getDocs(
-        query(collection(db, COLLECTIONS.SUBMISSIONS), orderBy('createdAt', 'desc'))
-      );
-      setSubmissions(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Submission)));
+      const res = await fetch('/api/submissions?status=all', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to load submissions');
+      const data = await res.json();
+      setSubmissions(data.submissions || []);
     } catch (e: unknown) {
       setError((e as Error).message);
     } finally {
@@ -298,9 +293,30 @@ export default function AdminSubmissionsPage() {
     }
   }, []);
 
+  const handleManualRefresh = useCallback(async () => {
+    setLoading(true);
+    await fetchSubmissionsData();
+  }, [fetchSubmissionsData]);
+
   useEffect(() => {
-    loadSubmissions();
-  }, [loadSubmissions]);
+    let isMounted = true;
+    fetch('/api/submissions?status=all', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : { submissions: [] }))
+      .then((data) => {
+        if (!isMounted) return;
+        setSubmissions(data.submissions || []);
+        setLoading(false);
+      })
+      .catch((e: unknown) => {
+        if (!isMounted) return;
+        setError((e as Error).message);
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Execute confirmed action (approve, reject, delete)
   const handleConfirmAction = async () => {
@@ -309,22 +325,21 @@ export default function AdminSubmissionsPage() {
     setActionLoading(submission.id);
 
     try {
-      const ref = doc(db, COLLECTIONS.SUBMISSIONS, submission.id);
-      if (type === 'approve') {
-        await updateDoc(ref, {
-          status: 'approved',
-          approvedAt: serverTimestamp(),
+      if (type === 'approve' || type === 'reject') {
+        const res = await fetch(`/api/submissions/${submission.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: type === 'approve' ? 'approved' : 'rejected' }),
         });
-      } else if (type === 'reject') {
-        await updateDoc(ref, {
-          status: 'rejected',
-          approvedAt: null,
-        });
+        if (!res.ok) throw new Error('Failed to update submission status');
       } else if (type === 'delete') {
-        await deleteDoc(ref);
+        const res = await fetch(`/api/submissions/${submission.id}`, {
+          method: 'DELETE',
+        });
+        if (!res.ok) throw new Error('Failed to delete submission');
       }
 
-      await loadSubmissions();
+      await fetchSubmissionsData();
       setActionPending(null);
     } catch (e: unknown) {
       setError((e as Error).message);
@@ -336,13 +351,9 @@ export default function AdminSubmissionsPage() {
   // Filter and search logic
   const filteredSubmissions = useMemo(() => {
     return submissions.filter((sub) => {
-      // 1. Status Filter
       if (statusFilter !== 'all' && sub.status !== statusFilter) return false;
-
-      // 2. Category Filter
       if (categoryFilter !== 'all' && sub.categoryId !== categoryFilter) return false;
 
-      // 3. Search Query
       if (searchQuery.trim()) {
         const queryLower = searchQuery.toLowerCase();
         const matchesTitle = sub.title?.toLowerCase().includes(queryLower);
@@ -383,7 +394,7 @@ export default function AdminSubmissionsPage() {
         </div>
 
         <button
-          onClick={loadSubmissions}
+          onClick={handleManualRefresh}
           disabled={loading}
           className="self-start sm:self-auto flex items-center gap-2 px-4 py-2.5 rounded-xl border border-foreground/15 text-sm font-medium hover:bg-foreground/5 text-foreground/80 transition-all shadow-sm disabled:opacity-50"
         >
@@ -458,7 +469,7 @@ export default function AdminSubmissionsPage() {
             )}
           </div>
 
-          {/* Category Filter Chips / Select */}
+          {/* Category Filter Select */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="flex items-center gap-1.5 text-xs text-foreground/60 whitespace-nowrap">
               <Filter className="w-3.5 h-3.5" />
@@ -596,7 +607,7 @@ export default function AdminSubmissionsPage() {
 
                       {/* Date */}
                       <td className="px-4 py-3.5 whitespace-nowrap text-xs text-foreground/60">
-                        {formatDate(sub.createdAt as never)}
+                        {formatDate(sub.createdAt)}
                       </td>
 
                       {/* Vote Count */}
@@ -701,7 +712,7 @@ export default function AdminSubmissionsPage() {
                     {getCategoryName(sub.categoryId)}
                   </span>
                   <div className="flex items-center gap-3">
-                    <span>{formatDate(sub.createdAt as never)}</span>
+                    <span>{formatDate(sub.createdAt)}</span>
                     <span className="font-bold text-foreground flex items-center gap-1">
                       <ThumbsUp className="w-3 h-3 text-purple-600" />
                       {sub.voteCount || 0}
@@ -760,10 +771,12 @@ export default function AdminSubmissionsPage() {
           {/* Table Footer with Summary */}
           <div className="px-5 py-3.5 bg-foreground/[0.02] border-t border-foreground/10 text-xs text-foreground/50 flex items-center justify-between">
             <span>
-              Showing {filteredSubmissions.length} of {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
+              Showing {filteredSubmissions.length} of {submissions.length} submission
+              {submissions.length !== 1 ? 's' : ''}
             </span>
             <span className="font-medium">
-              Approved: {counts.approved} | Pending: {counts.pending} | Rejected: {counts.rejected}
+              Approved: {counts.approved} | Pending: {counts.pending} | Rejected:{' '}
+              {counts.rejected}
             </span>
           </div>
         </div>

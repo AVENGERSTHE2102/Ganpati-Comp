@@ -1,12 +1,7 @@
 /**
- * Centralized list of authorized admin email addresses.
- *
- * IMPORTANT: This list is used ONLY for:
- *  1. Setting role: "admin" in a newly-created Firestore user document.
- *  2. Routing the user to the correct post-login destination.
- *
- * Actual permission enforcement is done server-side in firestore.rules and
- * storage.rules — never trust this list alone for access control.
+ * IMPORTANT: This list is used for:
+ *  1. Assigning role: "admin" during OAuth login and user provisioning in MongoDB.
+ *  2. Enforcing admin-only actions on server API routes.
  */
 export const ADMIN_EMAILS = [
   '325prashant0009@dbit.in',
@@ -22,7 +17,13 @@ export type AdminEmail = (typeof ADMIN_EMAILS)[number];
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
   const normalized = email.trim().toLowerCase();
-  return (ADMIN_EMAILS as readonly string[]).some(
-    (admin) => admin.toLowerCase() === normalized
+  const envAdmins = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return (
+    (ADMIN_EMAILS as readonly string[]).some((admin) => admin.toLowerCase() === normalized) ||
+    envAdmins.includes(normalized)
   );
 }
+

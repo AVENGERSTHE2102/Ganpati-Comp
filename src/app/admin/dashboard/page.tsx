@@ -2,9 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { collection, getCountFromServer, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { COLLECTIONS } from '@/lib/firestore';
 import { StatCard } from '@/components/admin/StatCard';
 import { CompetitionControls } from '@/components/admin/CompetitionControls';
 import {
@@ -15,8 +12,6 @@ import {
   ThumbsUp,
   ArrowRight,
   Sparkles,
-  Shield,
-  Eye,
 } from 'lucide-react';
 
 interface Stats {
@@ -27,42 +22,18 @@ interface Stats {
   totalVotes: number;
 }
 
-async function fetchStats(): Promise<Stats> {
-  const [
-    participantsSnap,
-    totalSubmissionsSnap,
-    pendingSnap,
-    approvedSnap,
-    votesSnap,
-  ] = await Promise.all([
-    getCountFromServer(collection(db, COLLECTIONS.USERS)),
-    getCountFromServer(collection(db, COLLECTIONS.SUBMISSIONS)),
-    getCountFromServer(
-      query(collection(db, COLLECTIONS.SUBMISSIONS), where('status', '==', 'pending'))
-    ),
-    getCountFromServer(
-      query(collection(db, COLLECTIONS.SUBMISSIONS), where('status', '==', 'approved'))
-    ),
-    getCountFromServer(collection(db, COLLECTIONS.VOTES)),
-  ]);
-
-  return {
-    totalParticipants: participantsSnap.data().count,
-    totalSubmissions: totalSubmissionsSnap.data().count,
-    pendingSubmissions: pendingSnap.data().count,
-    approvedSubmissions: approvedSnap.data().count,
-    totalVotes: votesSnap.data().count,
-  };
-}
-
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchStats()
-      .then(setStats)
+    fetch('/api/admin/stats', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Failed to load dashboard metrics');
+        const data = await res.json();
+        setStats(data.stats);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);

@@ -12,15 +12,14 @@ import {
   X,
   Sparkles,
 } from 'lucide-react';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  { label: 'Dashboard',    href: '/admin/dashboard',    icon: LayoutDashboard },
-  { label: 'Submissions',  href: '/admin/submissions',  icon: FileText },
-  { label: 'Participants', href: '/admin/participants',  icon: Users },
-  { label: 'Votes Audit',  href: '/admin/votes',         icon: Vote },
+  { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+  { label: 'Submissions', href: '/admin/submissions', icon: FileText },
+  { label: 'Participants', href: '/admin/participants', icon: Users },
+  { label: 'Votes Audit', href: '/admin/votes', icon: Vote },
 ];
 
 interface AdminSidebarProps {
@@ -31,9 +30,10 @@ interface AdminSidebarProps {
 export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { logout } = useAuth();
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await logout();
     router.push('/');
   };
 
@@ -63,7 +63,8 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
       {/* Navigation */}
       <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
         {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-          const active = pathname === href || (href !== '/admin/dashboard' && pathname.startsWith(href));
+          const active =
+            pathname === href || (href !== '/admin/dashboard' && pathname.startsWith(href));
           return (
             <Link
               key={href}
@@ -76,7 +77,12 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
                   : 'text-white/70 hover:bg-white/10 hover:text-white'
               )}
             >
-              <Icon className={cn('w-4 h-4 transition-transform group-hover:scale-110', active ? 'text-white' : 'text-saffron/80')} />
+              <Icon
+                className={cn(
+                  'w-4 h-4 transition-transform group-hover:scale-110',
+                  active ? 'text-white' : 'text-saffron/80'
+                )}
+              />
               <span>{label}</span>
             </Link>
           );
@@ -96,7 +102,7 @@ export function AdminSidebar({ mobileOpen = false, onCloseMobile }: AdminSidebar
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-all"
+          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-all cursor-pointer"
         >
           <LogOut className="w-4 h-4" />
           <span>Sign Out</span>
