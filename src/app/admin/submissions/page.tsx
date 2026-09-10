@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { CATEGORY_SEEDS } from '@/lib/db';
+import { CATEGORY_SEEDS } from '@/lib/constants';
 import type { Submission, CategorySlug, SubmissionStatus } from '@/lib/types';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import {

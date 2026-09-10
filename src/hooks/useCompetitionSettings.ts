@@ -6,7 +6,7 @@ import {
   DEFAULT_COMPETITION_SETTINGS,
   isSubmissionsActive,
   isVotingActive,
-} from '@/lib/db';
+} from '@/lib/constants';
 
 export interface UseCompetitionSettingsReturn {
   settings: CompetitionSettings;

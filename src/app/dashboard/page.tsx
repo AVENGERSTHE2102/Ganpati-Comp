@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CATEGORY_SEEDS } from '@/lib/db';
+import { CATEGORY_SEEDS } from '@/lib/constants';
 import type { Submission, CategorySlug, AppUser, SubmissionStatus } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { CATEGORY_SEEDS } from '@/lib/db';
+import { CATEGORY_SEEDS } from '@/lib/constants';
 import type { Submission, CategorySlug } from '@/lib/types';
 import { SubmissionCard } from '@/components/gallery/SubmissionCard';
 import { CategoryCard } from '@/components/gallery/CategoryCard';

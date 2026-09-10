@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CATEGORY_SEEDS } from '@/lib/db';
+import { CATEGORY_SEEDS } from '@/lib/constants';
 import type { CategorySlug } from '@/lib/types';
 import { CategoryCard } from '@/components/gallery/CategoryCard';
 import { Loader2 } from 'lucide-react';

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 import { upload } from '@vercel/blob/client';
-import { CATEGORY_SEEDS } from '@/lib/db';
+import { CATEGORY_SEEDS } from '@/lib/constants';
 import type { CategorySlug, FileType } from '@/lib/types';
 import { useCompetitionSettings } from '@/hooks/useCompetitionSettings';
 import {

@@ -14,7 +14,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import type { Submission, CategorySlug } from '@/lib/types';
-import { CATEGORY_SEEDS } from '@/lib/db';
+import { CATEGORY_SEEDS } from '@/lib/constants';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
