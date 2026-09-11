@@ -96,45 +96,62 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Connect to MongoDB and upsert user record
-    await ensureDefaultData();
-    const db = await getDatabase();
-    const usersCol = db.collection(COLLECTIONS.USERS);
-
     const email = googleUser.email.toLowerCase().trim();
     const isUserAdmin = isAdminEmail(email);
     const assignedRole: UserRole = isUserAdmin ? 'admin' : 'participant';
 
-    let userDoc = await usersCol.findOne({ email });
+    let userDoc;
+    try {
+      await ensureDefaultData();
+      const db = await getDatabase();
+      const usersCol = db.collection(COLLECTIONS.USERS);
 
-    if (!userDoc) {
-      // New user
-      userDoc = {
-        _id: googleUser.sub as unknown as never,
-        uid: googleUser.sub,
-        email,
-        name: googleUser.name || email.split('@')[0],
-        role: assignedRole,
-        emailVerified: true, // Google OAuth confirms email verification
-        image: googleUser.picture || '',
-        createdAt: new Date().toISOString(),
-      };
-      await usersCol.insertOne(userDoc);
-    } else {
-      // Returning user: sync profile data & ensure admin status
-      const updates: Record<string, unknown> = {
-        emailVerified: true,
-      };
-      if (googleUser.name && !userDoc.name) {
-        updates.name = googleUser.name;
+      userDoc = await usersCol.findOne({ email });
+
+      if (!userDoc) {
+        // New user
+        userDoc = {
+          _id: googleUser.sub as unknown as never,
+          uid: googleUser.sub,
+          email,
+          name: googleUser.name || email.split('@')[0],
+          role: assignedRole,
+          emailVerified: true, // Google OAuth confirms email verification
+          image: googleUser.picture || '',
+          createdAt: new Date().toISOString(),
+        };
+        await usersCol.insertOne(userDoc);
+      } else {
+        // Returning user: sync profile data & ensure admin status
+        const updates: Record<string, unknown> = {
+          emailVerified: true,
+        };
+        if (googleUser.name && !userDoc.name) {
+          updates.name = googleUser.name;
+        }
+        if (googleUser.picture) {
+          updates.image = googleUser.picture;
+        }
+        if (isUserAdmin && userDoc.role !== 'admin') {
+          updates.role = 'admin';
+          userDoc.role = 'admin';
+        }
+        await usersCol.updateOne({ email }, { $set: updates });
       }
-      if (googleUser.picture) {
-        updates.image = googleUser.picture;
-      }
-      if (isUserAdmin && userDoc.role !== 'admin') {
-        updates.role = 'admin';
-        userDoc.role = 'admin';
-      }
-      await usersCol.updateOne({ email }, { $set: updates });
+    } catch (dbErr: unknown) {
+      const errorObj = dbErr as Error;
+      console.error('Database error in Google OAuth callback:', errorObj);
+      const isSslOrNetwork =
+        errorObj?.message?.includes('SSL') ||
+        errorObj?.message?.includes('tlsv1') ||
+        errorObj?.name?.includes('MongoServerSelectionError') ||
+        errorObj?.name?.includes('MongoNetworkError');
+      const friendlyMessage = isSslOrNetwork
+        ? 'Database connection failed. Please ensure your IP address is whitelisted in MongoDB Atlas Network Access.'
+        : `Database error: ${errorObj?.message || 'Failed to save user profile.'}`;
+      return NextResponse.redirect(
+        `${appUrl}/login?error=${encodeURIComponent(friendlyMessage)}`
+      );
     }
 
     // 4. Create and set session cookie
