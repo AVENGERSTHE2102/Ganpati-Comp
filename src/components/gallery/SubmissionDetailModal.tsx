@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { CATEGORY_SEEDS } from '@/lib/constants';
-import type { Submission, CategorySlug } from '@/lib/types';
+import type { Submission, CategorySlug, FileType } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { upload } from '@vercel/blob/client';
 import {
   X,
   User,
@@ -21,8 +22,28 @@ import {
   Sparkles,
   CheckCircle2,
   RotateCcw,
+  UploadCloud,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+function detectFileType(file: File): FileType {
+  if (file.type.startsWith('image/')) return 'image';
+  if (file.type.startsWith('video/')) return 'video';
+  if (file.type === 'application/pdf') return 'pdf';
+  return 'other';
+}
+
+const ALLOWED_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+  'application/pdf',
+];
+const MAX_FILE_SIZE_MB = 50;
 
 export interface SubmissionDetailModalProps {
   submission: Submission | null;
@@ -76,9 +97,13 @@ export function SubmissionDetailModal({
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editCategory, setEditCategory] = useState<CategorySlug>('home-decor');
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [editFilePreview, setEditFilePreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [currentSub, setCurrentSub] = useState<Submission | null>(submission);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync current submission when prop changes
   useEffect(() => {
@@ -87,6 +112,9 @@ export function SubmissionDetailModal({
       setEditTitle(submission.title);
       setEditDesc(submission.description);
       setEditCategory(submission.categoryId);
+      setEditFile(null);
+      setEditFilePreview(null);
+      setUploadProgress(0);
       setIsEditing(false);
       setSaveError('');
     }
@@ -123,6 +151,28 @@ export function SubmissionDetailModal({
   const votedForThis = userVotedSubmissionId === currentSub.id;
   const votedForOther = userHasVotedInCategory && !votedForThis;
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setSaveError('Invalid file type. Allowed: images (JPEG, PNG, WebP, GIF), videos (MP4, WebM, MOV), and PDF.');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setSaveError(`File size must be under ${MAX_FILE_SIZE_MB} MB.`);
+      return;
+    }
+
+    setSaveError('');
+    setEditFile(file);
+    if (file.type.startsWith('image/')) {
+      setEditFilePreview(URL.createObjectURL(file));
+    } else {
+      setEditFilePreview(null);
+    }
+  };
+
   // Handle Save Edit
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,6 +189,23 @@ export function SubmissionDetailModal({
     setSaveError('');
 
     try {
+      let newFileUrl = currentSub.fileUrl;
+      let newFileType = currentSub.fileType;
+
+      // 1. Upload replacement file to Vercel Blob if selected
+      if (editFile) {
+        const uploadedBlob = await upload(editFile.name, editFile, {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+          onUploadProgress: (progress) => {
+            setUploadProgress(Math.round(progress.percentage));
+          },
+        });
+        newFileUrl = uploadedBlob.url;
+        newFileType = detectFileType(editFile);
+      }
+
+      // 2. Patch submission in database
       const res = await fetch(`/api/submissions/${currentSub.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -146,6 +213,7 @@ export function SubmissionDetailModal({
           title: editTitle.trim(),
           description: editDesc.trim(),
           categoryId: editCategory,
+          ...(editFile ? { fileUrl: newFileUrl, fileType: newFileType } : {}),
         }),
       });
 
@@ -154,20 +222,26 @@ export function SubmissionDetailModal({
         throw new Error(data.error || 'Failed to update submission.');
       }
 
-      const updated = {
+      const updated: Submission = {
         ...currentSub,
         title: editTitle.trim(),
         description: editDesc.trim(),
         categoryId: editCategory,
+        fileUrl: newFileUrl,
+        fileType: newFileType,
       };
 
       setCurrentSub(updated);
       setIsEditing(false);
+      setEditFile(null);
+      setEditFilePreview(null);
+      setUploadProgress(0);
       onSubmissionUpdated?.(updated);
     } catch (err: unknown) {
       setSaveError((err as Error).message || 'Failed to update submission.');
     } finally {
       setSaveLoading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -318,6 +392,103 @@ export function SubmissionDetailModal({
                 </select>
               </div>
 
+              {/* Media Replacement Field */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground/70 mb-1">
+                  Submission Media (Photo, Video, or Document)
+                </label>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*,application/pdf"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+
+                <div className="p-3.5 rounded-xl border border-foreground/15 bg-foreground/[0.02] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-12 h-12 rounded-lg bg-foreground/10 overflow-hidden flex items-center justify-center flex-shrink-0 border border-foreground/10">
+                      {editFilePreview ? (
+                        <img src={editFilePreview} alt="New preview" className="w-full h-full object-cover" />
+                      ) : editFile ? (
+                        editFile.type.startsWith('video/') ? (
+                          <Video className="w-6 h-6 text-saffron" />
+                        ) : (
+                          <FileText className="w-6 h-6 text-saffron" />
+                        )
+                      ) : currentSub.fileType === 'image' ? (
+                        <img src={currentSub.fileUrl} alt={currentSub.title} className="w-full h-full object-cover" />
+                      ) : currentSub.fileType === 'video' ? (
+                        <Video className="w-6 h-6 text-saffron" />
+                      ) : (
+                        <FileText className="w-6 h-6 text-saffron" />
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      {editFile ? (
+                        <>
+                          <p className="text-xs font-semibold text-foreground truncate">{editFile.name}</p>
+                          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                            New file selected ({(editFile.size / (1024 * 1024)).toFixed(1)} MB)
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs font-semibold text-foreground truncate">Current Media</p>
+                          <p className="text-[11px] text-foreground/50">
+                            Type: {currentSub.fileType.toUpperCase()} (Keep current or select new)
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+                    {editFile && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditFile(null);
+                          setEditFilePreview(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="px-2.5 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                      >
+                        Reset
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-foreground/15 bg-white dark:bg-zinc-800 text-foreground hover:bg-foreground/5 transition-colors"
+                    >
+                      <UploadCloud className="w-3.5 h-3.5 text-saffron" />
+                      <span>{editFile ? 'Change File' : 'Replace Media'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="mt-2">
+                    <div className="flex justify-between text-[11px] text-foreground/60 mb-1">
+                      <span>Uploading new media...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-foreground/10 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-saffron h-full transition-all duration-200"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                <p className="text-[11px] text-foreground/50 mt-1">
+                  Supported formats: JPEG, PNG, WebP, GIF, MP4, WebM, MOV, or PDF (up to 50MB).
+                </p>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-foreground/70 mb-1">
                   Description
@@ -340,6 +511,9 @@ export function SubmissionDetailModal({
                     setEditTitle(currentSub.title);
                     setEditDesc(currentSub.description);
                     setEditCategory(currentSub.categoryId);
+                    setEditFile(null);
+                    setEditFilePreview(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
                     setSaveError('');
                   }}
                   disabled={saveLoading}
@@ -355,7 +529,7 @@ export function SubmissionDetailModal({
                   {saveLoading ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Saving...</span>
+                      <span>{editFile ? 'Uploading & Saving...' : 'Saving...'}</span>
                     </>
                   ) : (
                     <>

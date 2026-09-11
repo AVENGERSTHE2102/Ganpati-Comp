@@ -85,6 +85,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updates.categoryId = body.categoryId;
     }
 
+    // Submitter or Admin can update Media File
+    if (typeof body.fileUrl === 'string' && body.fileUrl.startsWith('http')) {
+      updates.fileUrl = body.fileUrl;
+      if (['image', 'video', 'pdf', 'other'].includes(body.fileType)) {
+        updates.fileType = body.fileType;
+      }
+    }
+
     // Only Admin can update Status
     if (body.status !== undefined) {
       if (!isAdmin) {
