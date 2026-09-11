@@ -126,10 +126,10 @@ export async function POST(request: NextRequest) {
       description: description.trim(),
       fileUrl,
       fileType: fileType || 'other',
-      status: 'pending',
+      status: 'approved',
       voteCount: 0,
       createdAt: new Date().toISOString(),
-      approvedAt: null,
+      approvedAt: new Date().toISOString(),
     };
 
     await db.collection(COLLECTIONS.SUBMISSIONS).insertOne({
