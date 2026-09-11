@@ -140,11 +140,15 @@ export function SubmissionCard({
   onCardClick,
   onEditClick,
 }: SubmissionCardProps) {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const TypeIcon = FILE_ICONS[submission.fileType] ?? FileText;
 
-  const isOwner = Boolean(user && user.uid === submission.participantId);
-  const canEdit = isOwner || role === 'admin';
+  const isOwner = Boolean(
+    user &&
+    user.uid &&
+    (user.uid === submission.participantId || (user.email && user.email === submission.participantId))
+  );
+  const canEdit = isOwner;
 
   // Real, confirmed vote count from backend (never faked or optimistically spoofed)
   const confirmedVoteCount = submission.voteCount || 0;

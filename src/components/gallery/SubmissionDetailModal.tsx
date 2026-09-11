@@ -90,7 +90,7 @@ export function SubmissionDetailModal({
   onVoteClick,
   onSubmissionUpdated,
 }: SubmissionDetailModalProps) {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
 
   // Local state for inline edit
   const [isEditing, setIsEditing] = useState(false);
@@ -145,8 +145,12 @@ export function SubmissionDetailModal({
 
   if (!isOpen || !currentSub) return null;
 
-  const isOwner = Boolean(user && user.uid === currentSub.participantId);
-  const canEdit = isOwner || role === 'admin';
+  const isOwner = Boolean(
+    user &&
+    user.uid &&
+    (user.uid === currentSub.participantId || (user.email && user.email === currentSub.participantId))
+  );
+  const canEdit = isOwner;
 
   const votedForThis = userVotedSubmissionId === currentSub.id;
   const votedForOther = userHasVotedInCategory && !votedForThis;

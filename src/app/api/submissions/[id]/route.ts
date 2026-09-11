@@ -43,23 +43,50 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
     }
 
-    const isOwner = session.uid === doc.participantId;
+    const body = await request.json();
+
+    const isOwner = Boolean(
+      session.uid &&
+      (session.uid === doc.participantId || (session.email && session.email === doc.participantId))
+    );
     const isAdmin = session.role === 'admin';
 
-    if (!isOwner && !isAdmin) {
+    const isContentUpdate =
+      body.title !== undefined ||
+      body.description !== undefined ||
+      body.categoryId !== undefined ||
+      body.fileUrl !== undefined ||
+      body.fileType !== undefined;
+
+    // Only the person who submitted the post can edit it
+    if (isContentUpdate && !isOwner) {
       return NextResponse.json(
-        { error: 'You do not have permission to edit this submission.' },
+        { error: 'Only the person who submitted this post can edit it.' },
         { status: 403 }
       );
     }
 
-    const body = await request.json();
+    // Only Admin can update Status
+    if (body.status !== undefined && !isAdmin) {
+      return NextResponse.json(
+        { error: 'Only admins can update submission status.' },
+        { status: 403 }
+      );
+    }
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json(
+        { error: 'You do not have permission to modify this submission.' },
+        { status: 403 }
+      );
+    }
+
     const updates: Record<string, unknown> = {
       updatedAt: new Date().toISOString(),
     };
 
-    // Submitter or Admin can update Title
-    if (typeof body.title === 'string') {
+    // Submitter can update Title
+    if (isOwner && typeof body.title === 'string') {
       const trimmedTitle = body.title.trim();
       if (trimmedTitle.length < 3) {
         return NextResponse.json({ error: 'Title must be at least 3 characters.' }, { status: 400 });
@@ -67,8 +94,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updates.title = trimmedTitle;
     }
 
-    // Submitter or Admin can update Description
-    if (typeof body.description === 'string') {
+    // Submitter can update Description
+    if (isOwner && typeof body.description === 'string') {
       const trimmedDesc = body.description.trim();
       if (trimmedDesc.length < 10) {
         return NextResponse.json({ error: 'Description must be at least 10 characters.' }, { status: 400 });
@@ -76,8 +103,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updates.description = trimmedDesc;
     }
 
-    // Submitter or Admin can update Category
-    if (typeof body.categoryId === 'string') {
+    // Submitter can update Category
+    if (isOwner && typeof body.categoryId === 'string') {
       const validCategories = ['home-decor', 'reel-making', 'literature', 'faculty-corner'];
       if (!validCategories.includes(body.categoryId)) {
         return NextResponse.json({ error: 'Invalid category specified.' }, { status: 400 });
@@ -85,8 +112,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updates.categoryId = body.categoryId;
     }
 
-    // Submitter or Admin can update Media File
-    if (typeof body.fileUrl === 'string' && body.fileUrl.startsWith('http')) {
+    // Submitter can update Media File
+    if (isOwner && typeof body.fileUrl === 'string' && body.fileUrl.startsWith('http')) {
       updates.fileUrl = body.fileUrl;
       if (['image', 'video', 'pdf', 'other'].includes(body.fileType)) {
         updates.fileType = body.fileType;
