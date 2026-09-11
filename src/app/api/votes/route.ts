@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await castVote({
+    const result = await castVote({
       userId: session.uid,
       userName: session.name || session.email.split('@')[0],
       emailVerified: session.emailVerified,
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       categoryId,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, ...result });
   } catch (err) {
     if (err instanceof VotingError) {
       const statusMap: Record<string, number> = {

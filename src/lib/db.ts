@@ -145,8 +145,17 @@ export async function updateCompetitionSettings(
 // ─── Voting Logic ─────────────────────────────────────────────────────────────
 
 export class VotingError extends Error {
+  readonly code:
+    | 'not_authenticated'
+    | 'email_not_verified'
+    | 'already_voted'
+    | 'submission_not_approved'
+    | 'category_closed'
+    | 'voting_closed'
+    | 'unknown';
+
   constructor(
-    public readonly code:
+    code:
       | 'not_authenticated'
       | 'email_not_verified'
       | 'already_voted'
@@ -157,6 +166,7 @@ export class VotingError extends Error {
     message: string
   ) {
     super(message);
+    this.code = code;
     this.name = 'VotingError';
   }
 }
@@ -173,13 +183,18 @@ export interface CastVoteParams {
   categoryId: CategorySlug;
 }
 
+export type VoteActionResult = {
+  action: 'voted' | 'revoked' | 'switched';
+  previousSubmissionId?: string;
+};
+
 export async function castVote({
   userId,
   userName,
   emailVerified,
   submissionId,
   categoryId,
-}: CastVoteParams): Promise<void> {
+}: CastVoteParams): Promise<VoteActionResult> {
   if (!userId) {
     throw new VotingError('not_authenticated', 'You must be logged in to vote.');
   }
@@ -210,16 +225,59 @@ export async function castVote({
 
   const vId = voteDocId(userId, categoryId);
 
-  // 3. Guard: check if already voted
+  // 3. Check if user has already voted in this category
   const existingVote = await db.collection(COLLECTIONS.VOTES).findOne({
     $or: [{ id: vId }, { userId, categoryId }],
   });
 
   if (existingVote) {
-    throw new VotingError('already_voted', 'You have already voted in this category.');
+    // If user clicks the SAME submission they already voted for -> REVOKE (unvote)
+    if (existingVote.submissionId === submissionId) {
+      await db.collection(COLLECTIONS.VOTES).deleteOne({
+        $or: [{ id: vId }, { userId, categoryId }],
+      });
+
+      // Atomically decrement vote count (prevent negative)
+      await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+        { id: submissionId, voteCount: { $gt: 0 } },
+        { $inc: { voteCount: -1 } }
+      );
+
+      return { action: 'revoked' };
+    }
+
+    // If user clicks a DIFFERENT submission in the same category -> SWITCH vote
+    const prevSubId = existingVote.submissionId;
+
+    // Update vote record
+    await db.collection(COLLECTIONS.VOTES).updateOne(
+      { $or: [{ id: vId }, { userId, categoryId }] },
+      {
+        $set: {
+          submissionId,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    );
+
+    // Decrement previous submission vote count
+    if (prevSubId) {
+      await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+        { id: prevSubId, voteCount: { $gt: 0 } },
+        { $inc: { voteCount: -1 } }
+      );
+    }
+
+    // Increment new submission vote count
+    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+      { id: submissionId },
+      { $inc: { voteCount: 1 } }
+    );
+
+    return { action: 'switched', previousSubmissionId: prevSubId };
   }
 
-  // 4. Create vote record (deterministic ID enforces uniqueness at database engine level)
+  // 4. Create new vote record (deterministic ID enforces uniqueness at database engine level)
   try {
     await db.collection(COLLECTIONS.VOTES).insertOne({
       _id: vId as unknown as never,
@@ -233,7 +291,7 @@ export async function castVote({
   } catch (err: unknown) {
     const code = (err as { code?: number })?.code;
     if (code === 11000) {
-      throw new VotingError('already_voted', 'You have already voted in this category.');
+      throw new VotingError('already_voted', 'Vote conflict. Please try again.');
     }
     throw err;
   }
@@ -245,4 +303,6 @@ export async function castVote({
       $inc: { voteCount: 1 },
     }
   );
+
+  return { action: 'voted' };
 }

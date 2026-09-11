@@ -12,6 +12,8 @@ import {
   AlertCircle,
   MailWarning,
   CheckCircle2,
+  RotateCcw,
+  Edit3,
 } from 'lucide-react';
 import type { Submission, CategorySlug } from '@/lib/types';
 import { CATEGORY_SEEDS } from '@/lib/constants';
@@ -118,8 +120,12 @@ export interface SubmissionCardProps {
   errorMessage?: string;
   /** Voting is open at all */
   votingDisabled?: boolean;
-  /** Called when the user clicks Vote */
+  /** Called when the user clicks Vote or Revoke */
   onVoteClick?: (submissionId: string, categoryId: CategorySlug) => void;
+  /** Called when user clicks the card to open preview modal */
+  onCardClick?: (submission: Submission) => void;
+  /** Called when submitter clicks edit */
+  onEditClick?: (submission: Submission) => void;
 }
 
 export function SubmissionCard({
@@ -131,9 +137,14 @@ export function SubmissionCard({
   errorMessage,
   votingDisabled = false,
   onVoteClick,
+  onCardClick,
+  onEditClick,
 }: SubmissionCardProps) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const TypeIcon = FILE_ICONS[submission.fileType] ?? FileText;
+
+  const isOwner = Boolean(user && user.uid === submission.participantId);
+  const canEdit = isOwner || role === 'admin';
 
   // Real, confirmed vote count from backend (never faked or optimistically spoofed)
   const confirmedVoteCount = submission.voteCount || 0;
@@ -168,26 +179,26 @@ export function SubmissionCard({
   }
   // State 5: Vote is being processed on this submission
   else if (isVoting) {
-    voteLabel = 'Voting...';
-    voteTitle = 'Submitting your vote to the blockchain / backend...';
+    voteLabel = 'Updating...';
+    voteTitle = 'Submitting your vote update to the backend...';
     buttonDisabled = true;
     buttonClass = 'bg-saffron/75 text-white cursor-wait opacity-90';
   }
-  // State 6: Vote successful (user voted for this submission)
+  // State 6: Vote successful (user voted for this submission) -> REVOKE IS ENABLED!
   else if (votedForThis) {
-    voteLabel = 'Vote recorded';
-    voteTitle = 'Your vote has been recorded for this submission';
-    buttonDisabled = true;
+    voteLabel = 'Voted ✓';
+    voteTitle = 'Click to revoke your vote';
+    buttonDisabled = false;
     buttonClass =
-      'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/80 cursor-default';
+      'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-red-50 hover:text-red-700 hover:border-red-300 active:scale-95 transition-all cursor-pointer';
   }
-  // State 3: User already voted in this category (for another submission)
+  // State 3: User already voted in this category (for another submission) -> SWITCH IS ENABLED!
   else if (votedForOther) {
-    voteLabel = 'Already voted';
-    voteTitle = 'You can only vote once per category. You already voted for another entry.';
-    buttonDisabled = true;
+    voteLabel = 'Switch vote';
+    voteTitle = 'Click to switch your vote in this category to this entry';
+    buttonDisabled = false;
     buttonClass =
-      'bg-foreground/10 text-foreground/45 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed';
+      'bg-saffron/10 text-saffron border border-saffron/30 hover:bg-saffron hover:text-white active:scale-95 transition-all cursor-pointer';
   }
   // Competition voting disabled by organizers or deadline passed
   else if (votingDisabled) {
@@ -210,17 +221,21 @@ export function SubmissionCard({
     voteTitle = 'Cast your vote for this submission';
     buttonDisabled = false;
     buttonClass =
-      'bg-saffron hover:bg-saffron-light text-white shadow-sm hover:shadow-md active:scale-95';
+      'bg-saffron hover:bg-saffron-light text-white shadow-sm hover:shadow-md active:scale-95 cursor-pointer';
   }
 
   const handleVoteClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (buttonDisabled || isVoting || isAnyVoting) return;
     onVoteClick?.(submission.id, submission.categoryId);
   };
 
   return (
-    <div className="group bg-white dark:bg-zinc-900 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden">
+    <div
+      onClick={() => onCardClick?.(submission)}
+      className="group bg-white dark:bg-zinc-900 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden cursor-pointer"
+    >
       {/* Preview Section */}
       <div className="relative">
         <FilePreview
@@ -235,13 +250,30 @@ export function SubmissionCard({
           {categoryName(submission.categoryId)}
         </span>
 
-        {/* Vote Recorded Floating Badge */}
-        {votedForThis && (
-          <span className="absolute top-3 right-3 bg-emerald-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Your Choice
-          </span>
-        )}
+        {/* Top Right Badges: Edit Button & Choice Badge */}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          {canEdit && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditClick?.(submission) || onCardClick?.(submission);
+              }}
+              className="bg-white/95 dark:bg-zinc-850/95 backdrop-blur-sm text-foreground hover:text-saffron px-2.5 py-1 rounded-full shadow-md border border-foreground/10 hover:border-saffron/50 transition-all text-xs flex items-center gap-1 font-semibold"
+              title="Edit submission details"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-saffron" />
+              <span>Edit</span>
+            </button>
+          )}
+
+          {votedForThis && (
+            <span className="bg-emerald-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Your Choice
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Body */}
@@ -320,6 +352,7 @@ export function SubmissionCard({
           {isLinkToLogin ? (
             <Link
               href="/login"
+              onClick={(e) => e.stopPropagation()}
               aria-label={`Login to vote for ${submission.title}`}
               className={cn(
                 'inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-saffron focus:ring-offset-2',
@@ -332,6 +365,7 @@ export function SubmissionCard({
           ) : isLinkToVerify ? (
             <Link
               href="/dashboard"
+              onClick={(e) => e.stopPropagation()}
               title={voteTitle}
               aria-label="Verify email on dashboard to vote"
               className={cn(
@@ -359,7 +393,7 @@ export function SubmissionCard({
               {isVoting ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : votedForThis ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
+                <RotateCcw className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
               ) : (
                 <ThumbsUp className="w-3.5 h-3.5" />
               )}

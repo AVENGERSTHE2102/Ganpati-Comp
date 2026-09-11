@@ -105,9 +105,22 @@ export function useVoting(): UseVotingReturn {
           throw new Error(data.error || 'Failed to cast vote.');
         }
 
-        // Set voted state only after server confirmation
-        setVotedCategories((prev) => new Set(prev).add(categoryId));
-        setVotedSubmissions((prev) => new Map(prev).set(categoryId, submissionId));
+        // Update state based on server action: revoked vs voted/switched
+        if (data.action === 'revoked') {
+          setVotedCategories((prev) => {
+            const next = new Set(prev);
+            next.delete(categoryId);
+            return next;
+          });
+          setVotedSubmissions((prev) => {
+            const next = new Map(prev);
+            next.delete(categoryId);
+            return next;
+          });
+        } else {
+          setVotedCategories((prev) => new Set(prev).add(categoryId));
+          setVotedSubmissions((prev) => new Map(prev).set(categoryId, submissionId));
+        }
       } catch (err: unknown) {
         const message =
           err instanceof Error

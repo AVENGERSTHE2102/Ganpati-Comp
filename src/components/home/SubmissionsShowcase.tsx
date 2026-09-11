@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { CATEGORY_SEEDS } from '@/lib/constants';
 import type { Submission, CategorySlug } from '@/lib/types';
 import { SubmissionCard } from '@/components/gallery/SubmissionCard';
+import { SubmissionDetailModal } from '@/components/gallery/SubmissionDetailModal';
 import { useVoting } from '@/hooks/useVoting';
 import {
   Sparkles,
@@ -23,6 +24,7 @@ export function SubmissionsShowcase() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
 
   const {
     votedCategories,
@@ -211,6 +213,8 @@ export function SubmissionsShowcase() {
                 errorMessage={errors.get(sub.id)}
                 votingDisabled={!isVotingOpen}
                 onVoteClick={handleVote}
+                onCardClick={(clicked) => setSelectedSubmission(clicked)}
+                onEditClick={(clicked) => setSelectedSubmission(clicked)}
               />
             ))}
           </div>
@@ -227,6 +231,35 @@ export function SubmissionsShowcase() {
           </Link>
         </div>
       </div>
+
+      {/* Full Preview & Submitter Edit Modal */}
+      <SubmissionDetailModal
+        submission={selectedSubmission}
+        isOpen={Boolean(selectedSubmission)}
+        onClose={() => setSelectedSubmission(null)}
+        userHasVotedInCategory={
+          selectedSubmission ? votedCategories.has(selectedSubmission.categoryId) : false
+        }
+        userVotedSubmissionId={
+          selectedSubmission ? votedSubmissions.get(selectedSubmission.categoryId) : undefined
+        }
+        isVoting={selectedSubmission ? loadingIds.has(selectedSubmission.id) : false}
+        isAnyVoting={isAnyVoting}
+        votingDisabled={!isVotingOpen}
+        onVoteClick={async (id, cat) => {
+          await handleVote(id, cat);
+          // Sync modal vote count
+          const res = await fetch(`/api/submissions/${id}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.submission) setSelectedSubmission(data.submission);
+          }
+        }}
+        onSubmissionUpdated={(updated) => {
+          setSelectedSubmission(updated);
+          loadSubmissions();
+        }}
+      />
     </section>
   );
 }

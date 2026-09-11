@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { CATEGORY_SEEDS } from '@/lib/constants';
 import type { Submission, CategorySlug } from '@/lib/types';
 import { SubmissionCard } from '@/components/gallery/SubmissionCard';
+import { SubmissionDetailModal } from '@/components/gallery/SubmissionDetailModal';
 import { CategoryCard } from '@/components/gallery/CategoryCard';
 import { useVoting } from '@/hooks/useVoting';
 import { Loader2, ArrowLeft, SearchX, Clock } from 'lucide-react';
@@ -23,6 +24,7 @@ export default function CategoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'votes'>('newest');
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
 
   const {
     votedCategories,
@@ -241,10 +243,37 @@ export default function CategoryPage() {
               errorMessage={errors.get(sub.id)}
               votingDisabled={!isVotingOpen}
               onVoteClick={handleVote}
+              onCardClick={(clicked) => setSelectedSubmission(clicked)}
+              onEditClick={(clicked) => setSelectedSubmission(clicked)}
             />
           ))}
         </div>
       )}
+
+      {/* Full Preview & Submitter Edit Modal */}
+      <SubmissionDetailModal
+        submission={selectedSubmission}
+        isOpen={Boolean(selectedSubmission)}
+        onClose={() => setSelectedSubmission(null)}
+        userHasVotedInCategory={votedCategories.has(categoryId)}
+        userVotedSubmissionId={votedSubmissions.get(categoryId)}
+        isVoting={selectedSubmission ? loadingIds.has(selectedSubmission.id) : false}
+        isAnyVoting={isAnyVoting}
+        votingDisabled={!isVotingOpen}
+        onVoteClick={async (id, cat) => {
+          await handleVote(id, cat);
+          // Sync modal vote count
+          const res = await fetch(`/api/submissions/${id}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.submission) setSelectedSubmission(data.submission);
+          }
+        }}
+        onSubmissionUpdated={(updated) => {
+          setSelectedSubmission(updated);
+          reloadSubmissions();
+        }}
+      />
 
       {/* Other categories */}
       {!loading && sorted.length > 0 && (
