@@ -191,9 +191,9 @@ size}`).
 
 Any host that (a) runs Node.js and (b) gives you a **persistent disk** will
 work — for example a college server, a small VPS (DigitalOcean, Linode),
-or Render/Railway with a persistent volume attached at `/data` and
-`/uploads` (adjust the paths in `db/database.js` and `lib/upload.js` if your
-host requires a specific mount point).
+or Render/Railway. This repository's `render.yaml` mounts Render's persistent
+disk at `/var/data` and stores both the SQLite database and uploads there.
+It requires a paid Render web-service plan: free instances cannot attach disks.
 
 General steps:
 
