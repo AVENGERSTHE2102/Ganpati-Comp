@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-
-const admins = new Set((process.env.ADMIN_EMAILS || "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
+import { database } from "@/lib/mongodb";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.SESSION_SECRET,
@@ -14,6 +13,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     signIn: ({ user }) => Boolean(user.email),
-    session: ({ session }) => ({ ...session, user: { ...session.user, isAdmin: admins.has(session.user?.email?.toLowerCase()) } }),
+    session: async ({ session }) => {
+      const email = session.user?.email?.trim().toLowerCase();
+      const user = email && await (await database()).collection("users").findOne({ email }, { projection: { role: 1 } });
+      return { ...session, user: { ...session.user, isAdmin: user?.role === "admin" } };
+    },
   },
 });
