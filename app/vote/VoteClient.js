@@ -90,7 +90,7 @@ function FullMediaItem({ file, alt }) {
     );
   }
 
-  return <img src={file.url} alt={alt} />;
+  return <img src={file.url} alt={alt} loading="lazy" />;
 }
 
 export default function VoteClient({ submissions, categories, voteCounts, showVoteCounts, pastDeadline, voterEmail, initialVotes, initialCategory }) {
@@ -106,6 +106,18 @@ export default function VoteClient({ submissions, categories, voteCounts, showVo
   const visible = submissions.filter((s) => s.category === category);
   const hasReels = visible.some((s) => isVideoFile(s.files?.[0]));
   const hasPhotos = visible.some((s) => !isVideoFile(s.files?.[0]));
+
+  useEffect(() => {
+    function syncFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const c = params.get("c");
+      if (c && categories.some((x) => x.key === c)) {
+        setCategory(c);
+      }
+    }
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, [categories]);
 
   const filtered = visible.filter((s) => {
     if (mediaFilter === "all") return true;

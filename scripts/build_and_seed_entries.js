@@ -95,10 +95,42 @@ function sanitizeFilename(name) {
   return clean.replace(/_+/g, '_').replace(/^_+|_+$/g, '');
 }
 
-function resolveProcessedFile(origName) {
+function resolveProcessedFiles(origName) {
   const ext = path.extname(origName).toLowerCase().replace('.', '');
   const base = path.basename(origName, path.extname(origName));
   const cleanBase = sanitizeFilename(base).slice(0, 50);
+
+  if (ext === 'pdf') {
+    // Check if multi-page rendered webp exists (_1, _2, etc)
+    const page1 = `${cleanBase}_1.webp`;
+    if (fs.existsSync(path.join(UPLOADS_DIR, page1))) {
+      const results = [];
+      let pageNum = 1;
+      while (fs.existsSync(path.join(UPLOADS_DIR, `${cleanBase}_${pageNum}.webp`))) {
+        const pName = `${cleanBase}_${pageNum}.webp`;
+        const pPath = path.join(UPLOADS_DIR, pName);
+        results.push({
+          url: `/uploads/${pName}`,
+          originalName: `${origName} (Page ${pageNum})`,
+          mime: 'image/webp',
+          size: fs.statSync(pPath).size
+        });
+        pageNum++;
+      }
+      return results;
+    }
+    // Single page webp
+    const singleWebp = `${cleanBase}.webp`;
+    if (fs.existsSync(path.join(UPLOADS_DIR, singleWebp))) {
+      const pPath = path.join(UPLOADS_DIR, singleWebp);
+      return [{
+        url: `/uploads/${singleWebp}`,
+        originalName: origName,
+        mime: 'image/webp',
+        size: fs.statSync(pPath).size
+      }];
+    }
+  }
 
   let targetExt = ext;
   let mime = 'application/octet-stream';
@@ -123,13 +155,13 @@ function resolveProcessedFile(origName) {
   const targetPath = path.join(UPLOADS_DIR, targetFilename);
   const size = fs.existsSync(targetPath) ? fs.statSync(targetPath).size : 0;
 
-  return {
+  return [{
     url: `/uploads/${targetFilename}`,
     originalName: origName,
     mime,
     size,
     posterUrl
-  };
+  }];
 }
 
 // Simple CSV parser supporting quotes & newlines
@@ -196,8 +228,7 @@ async function main() {
 
     const categoryKey = row_category_map[rowNum] || 'home-decor';
     const origFiles = row_file_map[rowNum] || [];
-
-    let files = origFiles.map(resolveProcessedFile);
+    let files = origFiles.flatMap(resolveProcessedFiles);
 
     // Handle Saumil Tharwal (Row 33 / 34)
     if (rowNum === 33 && files.length === 0) {

@@ -5,6 +5,7 @@ import subprocess
 import shutil
 import json
 import re
+from PIL import Image, ImageOps
 
 SOURCE_FOLDER = '/Users/aditya/Developer/marathi1/ganpati-agman-competition/Upload your Artwork - Performance _( Upload a photo , video , PDF , or any other relevant file.) (File responses)'
 CSV_FILE = '/Users/aditya/Developer/marathi1/ganpati-agman-competition/Student Kala Katta  (Responses) - Form Responses 1.csv'
@@ -75,32 +76,44 @@ def process_file(filename):
     dest_filename = f"{clean_base}.{ext_lower}"
     poster_filename = None
     mime = "application/octet-stream"
+    width = None
+    height = None
 
-    # Handle HEIC images -> convert to WebP
+    # Handle HEIC images -> convert to WebP with proper EXIF rotation
     if ext_lower == 'heic':
         tmp_jpg = os.path.join(TEMP_DIR, f"{clean_base}.jpg")
         dest_filename = f"{clean_base}.webp"
         dest_path = os.path.join(TARGET_DIR, dest_filename)
-        # sips to jpg
+        # Convert HEIC to JPEG using sips
         subprocess.run(['sips', '-s', 'format', 'jpeg', src_path, '--out', tmp_jpg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        # cwebp to webp
-        subprocess.run(['cwebp', '-q', '82', tmp_jpg, '-o', dest_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Open in PIL and apply exif_transpose
+        im = Image.open(tmp_jpg)
+        im = ImageOps.exif_transpose(im)
+        if im.mode in ('RGBA', 'LA'):
+            im = im.convert('RGBA')
+        else:
+            im = im.convert('RGB')
+        im.save(dest_path, 'WEBP', quality=82)
+        width, height = im.size
         mime = 'image/webp'
-        print(f"Converted HEIC -> WebP: {dest_filename}")
+        print(f"Converted & Auto-oriented HEIC -> WebP: {dest_filename} ({width}x{height})")
+        if os.path.exists(tmp_jpg):
+            os.remove(tmp_jpg)
 
-    # Handle standard images -> convert to WebP
-    elif ext_lower in ['jpg', 'jpeg', 'png']:
+    # Handle standard images -> convert to WebP with proper EXIF rotation
+    elif ext_lower in ['jpg', 'jpeg', 'png', 'webp']:
         dest_filename = f"{clean_base}.webp"
         dest_path = os.path.join(TARGET_DIR, dest_filename)
-        subprocess.run(['cwebp', '-q', '82', src_path, '-o', dest_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        im = Image.open(src_path)
+        im = ImageOps.exif_transpose(im)
+        if im.mode in ('RGBA', 'LA'):
+            im = im.convert('RGBA')
+        else:
+            im = im.convert('RGB')
+        im.save(dest_path, 'WEBP', quality=82)
+        width, height = im.size
         mime = 'image/webp'
-        print(f"Optimized Image -> WebP: {dest_filename}")
-
-    elif ext_lower == 'webp':
-        dest_filename = f"{clean_base}.webp"
-        dest_path = os.path.join(TARGET_DIR, dest_filename)
-        shutil.copy2(src_path, dest_path)
-        mime = 'image/webp'
+        print(f"Optimized & Auto-oriented Image -> WebP: {dest_filename} ({width}x{height})")
 
     # Handle PDF
     elif ext_lower == 'pdf':
@@ -127,15 +140,30 @@ def process_file(filename):
         ]
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        # Generate poster thumbnail
-        poster_cmd = [
-            'ffmpeg', '-y', '-ss', '00:00:01', '-i', dest_path,
-            '-vframes', '1', '-q:v', '2',
-            poster_path
-        ]
-        subprocess.run(poster_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Generate poster thumbnail using ffmpeg + cwebp
+        tmp_frame = os.path.join(TEMP_DIR, f"{clean_base}_frame.jpg")
+        subprocess.run(['ffmpeg', '-y', '-ss', '00:00:01', '-i', dest_path, '-vframes', '1', tmp_frame], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.path.exists(tmp_frame):
+            im_frame = Image.open(tmp_frame)
+            im_frame = ImageOps.exif_transpose(im_frame)
+            im_frame.save(poster_path, 'WEBP', quality=80)
+            os.remove(tmp_frame)
+
+        # Probe video dimensions
+        try:
+            probe_cmd = ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_streams', dest_path]
+            p_out = subprocess.check_output(probe_cmd)
+            p_data = json.loads(p_out)
+            for s in p_data.get('streams', []):
+                if s.get('codec_type') == 'video':
+                    width = s.get('width')
+                    height = s.get('height')
+                    break
+        except Exception:
+            pass
+
         mime = 'video/mp4'
-        print(f"Optimized Video & Poster: {dest_filename}")
+        print(f"Optimized Video & Poster: {dest_filename} ({width}x{height})")
 
     file_size = os.path.getsize(os.path.join(TARGET_DIR, dest_filename))
     result = {
@@ -144,6 +172,10 @@ def process_file(filename):
         'mime': mime,
         'size': file_size
     }
+    if width and height:
+        result['width'] = width
+        result['height'] = height
+        result['isLandscape'] = width > height
     if poster_filename and os.path.exists(os.path.join(TARGET_DIR, poster_filename)):
         result['posterUrl'] = f"/uploads/{poster_filename}"
 

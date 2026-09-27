@@ -40,11 +40,10 @@
     "category": "literature",
     "files": [
       {
-        "url": "/uploads/BAPPA_Poem_1_-_Yash.pdf",
+        "url": "/uploads/BAPPA_Poem_1_-_Yash.webp",
         "originalName": "BAPPA Poem (1) - Yash.pdf",
-        "mime": "application/pdf",
-        "size": 66414,
-        "posterUrl": null
+        "mime": "image/webp",
+        "size": 61164
       }
     ],
     "status": "approved",
@@ -95,14 +94,14 @@
         "url": "/uploads/20260907_133459_-_Ninad_K.webp",
         "originalName": "20260907_133459 - Ninad K.jpg",
         "mime": "image/webp",
-        "size": 340946,
+        "size": 337602,
         "posterUrl": null
       },
       {
         "url": "/uploads/20260911_201420_-_Ninad_K.webp",
         "originalName": "20260911_201420 - Ninad K.jpg",
         "mime": "image/webp",
-        "size": 646624,
+        "size": 650090,
         "posterUrl": null
       },
       {
@@ -149,7 +148,7 @@
         "url": "/uploads/IMG_20260914_153959876_-_shreya_wagh.webp",
         "originalName": "IMG_20260914_153959876 - shreya wagh.jpg",
         "mime": "image/webp",
-        "size": 1177526,
+        "size": 1171160,
         "posterUrl": null
       }
     ],
@@ -198,11 +197,16 @@
     "category": "literature",
     "files": [
       {
-        "url": "/uploads/Creative_Writing_-_Shraddha_Desai.pdf",
-        "originalName": "Creative Writing - Shraddha Desai.pdf",
-        "mime": "application/pdf",
-        "size": 70494,
-        "posterUrl": null
+        "url": "/uploads/Creative_Writing_-_Shraddha_Desai_1.webp",
+        "originalName": "Creative Writing - Shraddha Desai.pdf (Page 1)",
+        "mime": "image/webp",
+        "size": 132652
+      },
+      {
+        "url": "/uploads/Creative_Writing_-_Shraddha_Desai_2.webp",
+        "originalName": "Creative Writing - Shraddha Desai.pdf (Page 2)",
+        "mime": "image/webp",
+        "size": 65530
       }
     ],
     "status": "approved",
@@ -293,7 +297,7 @@
         "url": "/uploads/IMG_6852_-_Harshita_Chavan.webp",
         "originalName": "IMG_6852 - Harshita Chavan.jpeg",
         "mime": "image/webp",
-        "size": 764152,
+        "size": 766634,
         "posterUrl": null
       },
       {
@@ -333,28 +337,28 @@
         "url": "/uploads/IMG_20260914_111041567_-_OM_SANAP.webp",
         "originalName": "IMG_20260914_111041567 - OM SANAP.jpg",
         "mime": "image/webp",
-        "size": 2525008,
+        "size": 2520622,
         "posterUrl": null
       },
       {
         "url": "/uploads/IMG_20260914_223816102_HDR_-_OM_SANAP.webp",
         "originalName": "IMG_20260914_223816102_HDR - OM SANAP.jpg",
         "mime": "image/webp",
-        "size": 1866208,
+        "size": 1885016,
         "posterUrl": null
       },
       {
         "url": "/uploads/IMG_20260915_085522002_HDR_-_OM_SANAP.webp",
         "originalName": "IMG_20260915_085522002_HDR - OM SANAP.jpg",
         "mime": "image/webp",
-        "size": 1677894,
+        "size": 1682994,
         "posterUrl": null
       },
       {
         "url": "/uploads/IMG_20260917_105357407_HDR_PORTRAIT_-_OM_SANAP.webp",
         "originalName": "IMG_20260917_105357407_HDR_PORTRAIT - OM SANAP.jpg",
         "mime": "image/webp",
-        "size": 1062130,
+        "size": 1049446,
         "posterUrl": null
       },
       {
@@ -439,7 +443,7 @@
         "url": "/uploads/20260914_153318_-_Isha.webp",
         "originalName": "20260914_153318 - Isha.jpg",
         "mime": "image/webp",
-        "size": 1876878,
+        "size": 1870946,
         "posterUrl": null
       },
       {
@@ -545,7 +549,7 @@
         "url": "/uploads/IMG_20260916_184211892_HDR_PORTRAIT_-_shreya_wagh.webp",
         "originalName": "IMG_20260916_184211892_HDR_PORTRAIT - shreya wagh.jpg",
         "mime": "image/webp",
-        "size": 1369176,
+        "size": 1370664,
         "posterUrl": null
       },
       {
@@ -604,7 +608,7 @@
         "url": "/uploads/IMG_20260926_002042_339_-_Pranav_Shrungarpure.webp",
         "originalName": "IMG_20260926_002042_339 - Pranav Shrungarpure.webp",
         "mime": "image/webp",
-        "size": 192274,
+        "size": 132782,
         "posterUrl": null
       }
     ],
@@ -663,7 +667,7 @@
         "url": "/uploads/20260926_200306_-_Tanishka_Dhone.webp",
         "originalName": "20260926_200306 - Tanishka Dhone.jpg",
         "mime": "image/webp",
-        "size": 569272,
+        "size": 566608,
         "posterUrl": null
       }
     ],
@@ -689,35 +693,35 @@
         "url": "/uploads/PAARTH_TE_EXTC_IMG1_-_Paarth_Powar.webp",
         "originalName": "PAARTH_TE_EXTC_IMG1 - Paarth Powar.HEIC",
         "mime": "image/webp",
-        "size": 2397012,
+        "size": 2387268,
         "posterUrl": null
       },
       {
         "url": "/uploads/PAARTH_TE_EXTC_IMG2_-_Paarth_Powar.webp",
         "originalName": "PAARTH_TE_EXTC_IMG2 - Paarth Powar.HEIC",
         "mime": "image/webp",
-        "size": 3776838,
+        "size": 3847260,
         "posterUrl": null
       },
       {
         "url": "/uploads/PAARTH_TE_EXTC_IMG3_-_Paarth_Powar.webp",
         "originalName": "PAARTH_TE_EXTC_IMG3 - Paarth Powar.HEIC",
         "mime": "image/webp",
-        "size": 4337264,
+        "size": 4372674,
         "posterUrl": null
       },
       {
         "url": "/uploads/PAARTH_TE_EXTC_IMG4_-_Paarth_Powar.webp",
         "originalName": "PAARTH_TE_EXTC_IMG4 - Paarth Powar.HEIC",
         "mime": "image/webp",
-        "size": 2754188,
+        "size": 3132126,
         "posterUrl": null
       },
       {
         "url": "/uploads/PAARTH_TE_EXTC_IMG5_-_Paarth_Powar.webp",
         "originalName": "PAARTH_TE_EXTC_IMG5 - Paarth Powar.HEIC",
         "mime": "image/webp",
-        "size": 3756604,
+        "size": 3783558,
         "posterUrl": null
       },
       {
@@ -747,11 +751,10 @@
     "category": "literature",
     "files": [
       {
-        "url": "/uploads/Sneha_creative_writing_-_Sneha_Kamble.pdf",
+        "url": "/uploads/Sneha_creative_writing_-_Sneha_Kamble.webp",
         "originalName": "Sneha creative writing  - Sneha Kamble.pdf",
-        "mime": "application/pdf",
-        "size": 524521,
-        "posterUrl": null
+        "mime": "image/webp",
+        "size": 271716
       }
     ],
     "status": "approved",
@@ -773,11 +776,16 @@
     "category": "literature",
     "files": [
       {
-        "url": "/uploads/VanessaDsouza_CompsA_TY_-_Vanessa_Dsouza.pdf",
-        "originalName": "VanessaDsouza_CompsA_TY - Vanessa Dsouza.pdf",
-        "mime": "application/pdf",
-        "size": 4310613,
-        "posterUrl": null
+        "url": "/uploads/VanessaDsouza_CompsA_TY_-_Vanessa_Dsouza_1.webp",
+        "originalName": "VanessaDsouza_CompsA_TY - Vanessa Dsouza.pdf (Page 1)",
+        "mime": "image/webp",
+        "size": 371176
+      },
+      {
+        "url": "/uploads/VanessaDsouza_CompsA_TY_-_Vanessa_Dsouza_2.webp",
+        "originalName": "VanessaDsouza_CompsA_TY - Vanessa Dsouza.pdf (Page 2)",
+        "mime": "image/webp",
+        "size": 346350
       }
     ],
     "status": "approved",
@@ -854,7 +862,7 @@
         "url": "/uploads/IMG_20260915_134138647_-_Tejashree_Kulkarni.webp",
         "originalName": "IMG_20260915_134138647 - Tejashree Kulkarni.jpg",
         "mime": "image/webp",
-        "size": 527450,
+        "size": 519404,
         "posterUrl": null
       }
     ],
@@ -877,11 +885,10 @@
     "category": "home-decor",
     "files": [
       {
-        "url": "/uploads/IMG_20260914_183443_-_Yash_Shinde.pdf",
+        "url": "/uploads/IMG_20260914_183443_-_Yash_Shinde.webp",
         "originalName": "IMG_20260914_183443 - Yash Shinde.pdf",
-        "mime": "application/pdf",
-        "size": 299936,
-        "posterUrl": null
+        "mime": "image/webp",
+        "size": 469512
       }
     ],
     "status": "approved",
@@ -906,14 +913,14 @@
         "url": "/uploads/IMG_4402_-_Pavan_Botla.webp",
         "originalName": "IMG_4402 - Pavan Botla.HEIC",
         "mime": "image/webp",
-        "size": 869650,
+        "size": 879370,
         "posterUrl": null
       },
       {
         "url": "/uploads/IMG_4406_-_Pavan_Botla.webp",
         "originalName": "IMG_4406 - Pavan Botla.HEIC",
         "mime": "image/webp",
-        "size": 857716,
+        "size": 865424,
         "posterUrl": null
       },
       {
