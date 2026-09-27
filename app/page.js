@@ -31,7 +31,7 @@ export default async function Home() {
             </h1>
             <p className="hero-sub">
               Welcome to <b>{config.competitionName}</b> — the {config.clubName}&apos;s celebration of Ganeshotsav. Admire the
-              decorations, rangolis, aartis and traditional looks from our community, and vote for your favourites.
+              decorations, rangolis, poetry &amp; literature, and artistic creations from our community, and vote for your favourites.
             </p>
             <div className="hero-ctas">
               <Link className="btn btn-lg" href="/vote">{votingOpen ? "Cast your vote" : "See the entries"}</Link>

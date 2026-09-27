@@ -54,7 +54,12 @@ export default function EntryForm({ category }) {
       <label>Participant name<input required value={name} onChange={(e) => setName(e.target.value)} /></label>
       <label>Entry title<input required value={title} onChange={(e) => setTitle(e.target.value)} /></label>
       <label>
-        {category.allowedMime[0].startsWith("video/") ? "Video" : "Image"} <span className="muted">— {category.instructions}</span>
+        {category.allowedMime[0].startsWith("video/")
+          ? "Video"
+          : category.allowedMime.includes("application/pdf")
+          ? "Document / Image"
+          : "Image"}{" "}
+        <span className="muted">— {category.instructions}</span>
         <input
           type="file"
           required
@@ -63,9 +68,19 @@ export default function EntryForm({ category }) {
           onChange={(e) => setFiles(Array.from(e.target.files || []))}
         />
       </label>
-      {preview && (files[0].type.startsWith("video/")
-        ? <video src={preview} controls style={{ maxHeight: 280, borderRadius: 12, marginBottom: 16 }} />
-        : <img src={preview} alt="" style={{ maxHeight: 280, borderRadius: 12, marginBottom: 16 }} />)}
+      {preview && (files[0].type.startsWith("video/") ? (
+        <video src={preview} controls style={{ maxHeight: 280, borderRadius: 12, marginBottom: 16 }} />
+      ) : files[0].type === "application/pdf" ? (
+        <div style={{ padding: "12px 16px", background: "rgba(0,0,0,0.03)", border: "1px solid var(--border)", borderRadius: 12, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 22 }}>📄</span>
+          <div>
+            <strong>{files[0].name}</strong>
+            <span className="muted" style={{ marginLeft: 8 }}>({(files[0].size / (1024 * 1024)).toFixed(2)} MB)</span>
+          </div>
+        </div>
+      ) : (
+        <img src={preview} alt="" style={{ maxHeight: 280, borderRadius: 12, marginBottom: 16 }} />
+      ))}
       <button type="submit" disabled={busy}>{busy ? "Uploading…" : "Add entry"}</button>
     </form>
   );

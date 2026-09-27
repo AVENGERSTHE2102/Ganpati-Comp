@@ -12,7 +12,7 @@ const body = Mukta({ weight: ["400", "500", "700"], subsets: ["latin", "devanaga
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   title: "Ganpati Agman 2026 · Marathi Club",
-  description: "Vote for your favourite Ganpati decoration, rangoli, aarti and traditional look.",
+  description: "Vote for your favourite Ganpati decoration, rangoli, poetry & literature, and artistic creations.",
   openGraph: { images: ["/images/hero-ganesha.jpg"] },
 };
 
