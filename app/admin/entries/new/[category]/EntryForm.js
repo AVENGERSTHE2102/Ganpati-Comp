@@ -15,6 +15,10 @@ export default function EntryForm({ category }) {
     e.preventDefault();
     setError("");
     if (!files.length) return setError("Please choose a file.");
+    const hasVideo = files.some((f) => f.type?.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(f.name));
+    if (hasVideo && files.length > 1) {
+      return setError("For video reels, please upload 1 video file per entry.");
+    }
     if (files.length > category.maxFiles) return setError(`At most ${category.maxFiles} file(s) for ${category.label}.`);
 
     setBusy(true);
@@ -54,8 +58,10 @@ export default function EntryForm({ category }) {
       <label>Participant name<input required value={name} onChange={(e) => setName(e.target.value)} /></label>
       <label>Entry title<input required value={title} onChange={(e) => setTitle(e.target.value)} /></label>
       <label>
-        {category.allowedMime[0].startsWith("video/")
-          ? "Video"
+        {category.allowedMime.some((m) => m.startsWith("video/")) && category.allowedMime.some((m) => m.startsWith("image/"))
+          ? "Photo(s) or Reel (Video)"
+          : category.allowedMime[0]?.startsWith("video/")
+          ? "Video / Reel"
           : category.allowedMime.includes("application/pdf")
           ? "Document / Image"
           : "Image"}{" "}
@@ -68,19 +74,27 @@ export default function EntryForm({ category }) {
           onChange={(e) => setFiles(Array.from(e.target.files || []))}
         />
       </label>
-      {preview && (files[0].type.startsWith("video/") ? (
-        <video src={preview} controls style={{ maxHeight: 280, borderRadius: 12, marginBottom: 16 }} />
-      ) : files[0].type === "application/pdf" ? (
-        <div style={{ padding: "12px 16px", background: "rgba(0,0,0,0.03)", border: "1px solid var(--border)", borderRadius: 12, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 22 }}>📄</span>
-          <div>
-            <strong>{files[0].name}</strong>
-            <span className="muted" style={{ marginLeft: 8 }}>({(files[0].size / (1024 * 1024)).toFixed(2)} MB)</span>
+      {preview && (
+        files[0].type?.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(files[0].name) ? (
+          <div style={{ marginBottom: 16 }}>
+            <video src={preview} controls playsInline style={{ maxHeight: 320, width: "100%", borderRadius: 14, background: "#000" }} />
+            <p className="tiny muted" style={{ marginTop: 6 }}>🎬 Video Reel: <strong>{files[0].name}</strong> ({(files[0].size / (1024 * 1024)).toFixed(2)} MB)</p>
           </div>
-        </div>
-      ) : (
-        <img src={preview} alt="" style={{ maxHeight: 280, borderRadius: 12, marginBottom: 16 }} />
-      ))}
+        ) : files[0].type === "application/pdf" ? (
+          <div style={{ padding: "12px 16px", background: "rgba(0,0,0,0.03)", border: "1px solid var(--border)", borderRadius: 12, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 22 }}>📄</span>
+            <div>
+              <strong>{files[0].name}</strong>
+              <span className="muted" style={{ marginLeft: 8 }}>({(files[0].size / (1024 * 1024)).toFixed(2)} MB)</span>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 16 }}>
+            <img src={preview} alt="" style={{ maxHeight: 280, borderRadius: 12, objectFit: "contain" }} />
+            {files.length > 1 && <p className="tiny muted" style={{ marginTop: 6 }}>+{files.length - 1} more photo(s) selected ({files.length} total)</p>}
+          </div>
+        )
+      )}
       <button type="submit" disabled={busy}>{busy ? "Uploading…" : "Add entry"}</button>
     </form>
   );

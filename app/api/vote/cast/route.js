@@ -3,6 +3,8 @@ import { database, toId } from "@/lib/mongodb";
 import { checkVoteAllowed } from "@/lib/votingRules";
 import config from "@/config/site.config";
 
+import staticSubmissions from "@/data/submissions.json";
+
 export async function POST(request) {
   const session = await auth();
   const voterEmail = session?.user?.email?.toLowerCase();
@@ -15,17 +17,26 @@ export async function POST(request) {
   const { submissionId } = await request.json();
   if (!submissionId) return Response.json({ error: "submissionId is required." }, { status: 400 });
 
-  const db = await database();
-  const submission = await db.collection("submissions").findOne({ _id: toId(submissionId), status: "approved" });
+  const db = await database().catch(() => null);
+  let submission = staticSubmissions.find((s) => s.id === submissionId || s._id === submissionId || s.submissionCode === submissionId);
+  if (!submission && db) {
+    submission = await db.collection("submissions").findOne({ _id: toId(submissionId), status: "approved" }).catch(() => null);
+  }
   if (!submission) return Response.json({ error: "Entry not found." }, { status: 404 });
 
   const blocked = await checkVoteAllowed(voterEmail, submission.category);
   if (blocked) return Response.json({ error: blocked }, { status: 409 });
 
+  if (!db) {
+    return Response.json({ error: "Database temporarily unavailable. Please try again shortly." }, { status: 503 });
+  }
+
+  const targetId = toId(submission._id || submission.id);
+
   try {
     await db.collection("votes").insertOne({
       voterEmail,
-      submissionId: submission._id,
+      submissionId: targetId,
       category: submission.category,
       createdAt: new Date(),
     });

@@ -69,22 +69,34 @@ export default function AdminDashboard({ categories }) {
 
       <table>
         <thead>
-          <tr><th>Code</th><th>Name</th><th>Category</th><th>Title</th><th>Votes</th><th></th></tr>
+          <tr><th>Code</th><th>Name</th><th>Category</th><th>Title</th><th>Type</th><th>Votes</th><th></th></tr>
         </thead>
         <tbody>
-          {data.submissions.map((s) => (
-            <tr key={s.id}>
-              <td>{s.submissionCode}</td>
-              <td>{s.name}</td>
-              <td>{s.category}</td>
-              <td>{s.title}</td>
-              <td>{s.voteCount}</td>
-              <td>
-                <button onClick={() => setEditing(s)}>Edit</button>
-                <button onClick={() => remove(s.id)}>Delete</button>
-              </td>
-            </tr>
-          ))}
+          {data.submissions.map((s) => {
+            const first = s.files?.[0];
+            const isReel = first?.mime?.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(first?.url || first?.originalName || "");
+            const isPdf = first?.mime === "application/pdf" || /\.pdf$/i.test(first?.url || first?.originalName || "");
+            return (
+              <tr key={s.id}>
+                <td>{s.submissionCode}</td>
+                <td>{s.name}</td>
+                <td>{s.category}</td>
+                <td>{s.title}</td>
+                <td>
+                  {first ? (
+                    <a href={first.url} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                      {isReel ? <span className="chip chip-reel">🎬 Reel</span> : isPdf ? <span className="chip">📄 PDF</span> : <span className="chip">📸 Photo</span>}
+                    </a>
+                  ) : "—"}
+                </td>
+                <td>{s.voteCount}</td>
+                <td>
+                  <button onClick={() => setEditing(s)}>Edit</button>
+                  <button onClick={() => remove(s.id)}>Delete</button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

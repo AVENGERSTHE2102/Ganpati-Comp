@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { database } from "@/lib/mongodb";
 import { Mandala } from "@/app/components/Decor";
 import VoteClient from "./VoteClient";
+import staticSubmissions from "@/data/submissions.json";
 
 export const dynamic = "force-dynamic";
 
@@ -11,13 +12,15 @@ export default async function VotePage({ searchParams }) {
   const session = await auth();
   const voterEmail = session?.user?.email?.toLowerCase() || null;
 
-  const db = await database();
-  const submissions = await db.collection("submissions").find({ status: "approved" }).sort({ createdAt: -1 }).toArray();
-  const votes = config.showVoteCountsPublicly
-    ? await db.collection("votes").aggregate([{ $group: { _id: "$submissionId", n: { $sum: 1 } } }]).toArray()
+  const db = await database().catch(() => null);
+  // Submissions directly hardcoded from staticSubmissions (verified 34 entries from CSV & media)
+  const submissions = staticSubmissions;
+
+  const votes = config.showVoteCountsPublicly && db
+    ? await db.collection("votes").aggregate([{ $group: { _id: "$submissionId", n: { $sum: 1 } } }]).toArray().catch(() => [])
     : [];
   const voteCounts = Object.fromEntries(votes.map((v) => [v._id.toString(), v.n]));
-  const myVotes = voterEmail ? await db.collection("votes").find({ voterEmail }).toArray() : [];
+  const myVotes = voterEmail && db ? await db.collection("votes").find({ voterEmail }).toArray().catch(() => []) : [];
 
   return (
     <main>
@@ -31,7 +34,10 @@ export default async function VotePage({ searchParams }) {
       </section>
       <div className="container section">
         <VoteClient
-          submissions={submissions.map(({ _id, createdAt, updatedAt, email, collegeId, ...s }) => ({ id: _id.toString(), ...s }))}
+          submissions={submissions.map(({ _id, createdAt, updatedAt, ...s }) => ({
+            id: _id ? _id.toString() : s.id,
+            ...s,
+          }))}
           categories={config.categories.map(({ key, label, marathi }) => ({ key, label, marathi }))}
           voteCounts={voteCounts}
           showVoteCounts={config.showVoteCountsPublicly}

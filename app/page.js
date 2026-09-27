@@ -7,15 +7,26 @@ import { Countdown } from "@/app/components/Client";
 
 export const dynamic = "force-dynamic";
 
+import staticSubmissions from "@/data/submissions.json";
+
 export default async function Home() {
-  const db = await database();
-  const [counts, recent, voteTotal] = await Promise.all([
-    db.collection("submissions").aggregate([{ $match: { status: "approved" } }, { $group: { _id: "$category", n: { $sum: 1 } } }]).toArray(),
-    db.collection("submissions").find({ status: "approved", "files.mime": { $regex: "^image/" } }).sort({ createdAt: -1 }).limit(8).toArray(),
-    db.collection("votes").countDocuments(),
-  ]);
-  const countByCategory = Object.fromEntries(counts.map((c) => [c._id, c.n]));
-  const totalEntries = counts.reduce((s, c) => s + c.n, 0);
+  const db = await database().catch(() => null);
+  const [counts, recent, voteTotal] = db
+    ? await Promise.all([
+        db.collection("submissions").aggregate([{ $match: { status: "approved" } }, { $group: { _id: "$category", n: { $sum: 1 } } }]).toArray().catch(() => []),
+        db.collection("submissions").find({ status: "approved" }).sort({ createdAt: -1 }).limit(8).toArray().catch(() => []),
+        db.collection("votes").countDocuments().catch(() => 0),
+      ])
+    : [[], [], 0];
+
+  const staticCounts = staticSubmissions.reduce((acc, s) => {
+    acc[s.category] = (acc[s.category] || 0) + 1;
+    return acc;
+  }, {});
+
+  const countByCategory = counts.length > 0 ? Object.fromEntries(counts.map((c) => [c._id, c.n])) : staticCounts;
+  const totalEntries = counts.reduce((s, c) => s + c.n, 0) || staticSubmissions.length;
+  const recentItems = recent.length > 0 ? recent : staticSubmissions.slice(0, 8);
   const votingOpen = Date.now() < new Date(config.votingDeadline).getTime();
 
   return (
@@ -31,7 +42,7 @@ export default async function Home() {
             </h1>
             <p className="hero-sub">
               Welcome to <b>{config.competitionName}</b> — the {config.clubName}&apos;s celebration of Ganeshotsav. Admire the
-              decorations, rangolis, poetry &amp; literature, and artistic creations from our community, and vote for your favourites.
+              home decorations, reels &amp; videography, poetry &amp; literature, and artistic creations from our community, and vote for your favourites.
             </p>
             <div className="hero-ctas">
               <Link className="btn btn-lg" href="/vote">{votingOpen ? "Cast your vote" : "See the entries"}</Link>
@@ -105,19 +116,29 @@ export default async function Home() {
         </div>
       </section>
 
-      {recent.length > 0 && (
+      {recentItems.length > 0 && (
         <section className="container section">
           <header className="section-head reveal">
             <p className="eyebrow">Latest darshan</p>
             <h2>Fresh from the community</h2>
           </header>
           <div className="strip">
-            {recent.map((s) => {
-              const img = s.files.find((f) => f.mime?.startsWith("image/"));
+            {recentItems.map((s) => {
+              const file = s.files?.find((f) => f.mime?.startsWith("image/")) || s.files?.[0];
+              if (!file) return null;
+              const isVideo = file.mime?.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(file.url || "");
+              const itemId = s.id || (s._id ? s._id.toString() : Math.random().toString());
               return (
-                <Link key={s._id.toString()} href={`/vote?c=${s.category}`} className="strip-item reveal">
-                  <img src={img.url} alt={s.title} loading="lazy" />
-                  <span>{s.title}</span>
+                <Link key={itemId} href={`/vote?c=${s.category}`} className="strip-item reveal">
+                  {isVideo ? (
+                    <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+                      <video src={file.url} poster={file.posterUrl || undefined} muted playsInline preload="metadata" />
+                      <span className="strip-reel-badge">▶ Reel</span>
+                    </div>
+                  ) : (
+                    <img src={file.url} alt={s.title} loading="lazy" />
+                  )}
+                  <span>{isVideo ? `🎬 ${s.title}` : s.title}</span>
                 </Link>
               );
             })}
