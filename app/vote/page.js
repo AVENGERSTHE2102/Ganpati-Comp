@@ -6,15 +6,18 @@ import VoteClient from "./VoteClient";
 import staticSubmissions from "@/data/submissions.json";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function VotePage({ searchParams }) {
-  const { c } = await searchParams;
+  const { c } = (await searchParams) || {};
   const session = await auth();
   const voterEmail = session?.user?.email?.toLowerCase() || null;
 
   const db = await database().catch(() => null);
-  // Submissions directly hardcoded from staticSubmissions (verified 34 entries from CSV & media)
-  const submissions = staticSubmissions;
+  const dbSubmissions = db
+    ? await db.collection("submissions").find({ status: "approved" }).sort({ createdAt: -1 }).toArray().catch(() => null)
+    : null;
+  const submissions = (dbSubmissions && dbSubmissions.length > 0) ? dbSubmissions : staticSubmissions;
 
   const votes = config.showVoteCountsPublicly && db
     ? await db.collection("votes").aggregate([{ $group: { _id: "$submissionId", n: { $sum: 1 } } }]).toArray().catch(() => [])

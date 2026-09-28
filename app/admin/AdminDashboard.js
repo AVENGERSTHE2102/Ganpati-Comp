@@ -20,7 +20,10 @@ export default function AdminDashboard({ categories }) {
   }
 
   const refreshStats = () => {
-    fetch("/api/admin/stats").then((r) => r.json()).then(setStats).catch(() => {});
+    fetch("/api/admin/stats", { cache: "no-store" })
+      .then((r) => r.json())
+      .then(setStats)
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export default function AdminDashboard({ categories }) {
 
   const loadSubmissions = () => {
     const params = new URLSearchParams({ category, status, q, page: String(page) });
-    fetch(`/api/admin/submissions?${params}`)
+    fetch(`/api/admin/submissions?${params}`, { cache: "no-store" })
       .then((r) => r.json())
       .then(setData)
       .catch(() => {});
@@ -41,24 +44,25 @@ export default function AdminDashboard({ categories }) {
 
   async function handleCategoryChange(submission, newCat) {
     if (submission.category === newCat) return;
-    setUpdatingId(submission.id);
+    const targetId = submission.id || submission._id || submission.submissionCode;
+    setUpdatingId(targetId);
     try {
-      const res = await fetch(`/api/submissions/${submission.id}`, {
+      const res = await fetch(`/api/submissions/${targetId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category: newCat }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setData((d) => ({
           ...d,
-          submissions: d.submissions.map((s) => (s.id === submission.id ? { ...s, category: newCat } : s)),
+          submissions: d.submissions.map((s) => ((s.id === targetId || s._id === targetId) ? { ...s, category: newCat } : s)),
         }));
         refreshStats();
         const catLabel = categories.find((c) => c.key === newCat)?.label || newCat;
         showNotice(`Category for "${submission.name}" changed to "${catLabel}".`);
       } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Failed to update category.");
+        alert(data.error || "Failed to update category.");
       }
     } catch (err) {
       alert("Error updating category: " + err.message);
@@ -71,12 +75,13 @@ export default function AdminDashboard({ categories }) {
     if (!confirm(`Are you sure you want to delete the submission for "${name || id}"?`)) return;
     try {
       const res = await fetch(`/api/submissions/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        setData((d) => ({ ...d, submissions: d.submissions.filter((s) => s.id !== id) }));
+        setData((d) => ({ ...d, submissions: d.submissions.filter((s) => s.id !== id && s._id !== id) }));
         refreshStats();
         showNotice(`Submission for "${name}" deleted.`);
       } else {
-        alert("Failed to delete submission.");
+        alert(data.error || "Failed to delete submission.");
       }
     } catch (err) {
       alert("Error: " + err.message);
@@ -86,8 +91,9 @@ export default function AdminDashboard({ categories }) {
   async function saveEdit(e) {
     e.preventDefault();
     setSavingEdit(true);
+    const targetId = editing.id || editing._id || editing.submissionCode;
     try {
-      const res = await fetch(`/api/submissions/${editing.id}`, {
+      const res = await fetch(`/api/submissions/${targetId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -96,17 +102,17 @@ export default function AdminDashboard({ categories }) {
           category: editing.category,
         }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setData((d) => ({
           ...d,
-          submissions: d.submissions.map((s) => (s.id === editing.id ? { ...s, ...editing } : s)),
+          submissions: d.submissions.map((s) => ((s.id === targetId || s._id === targetId) ? { ...s, ...editing } : s)),
         }));
         refreshStats();
         showNotice(`Saved changes for "${editing.name}".`);
         setEditing(null);
       } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Failed to save changes.");
+        alert(data.error || "Failed to save changes.");
       }
     } catch (err) {
       alert("Error saving: " + err.message);

@@ -223,6 +223,7 @@ async function main() {
     const mobile = (r[5] || '').trim();
     const rawTalent = (r[6] || '').trim();
     const title = (r[7] || '').trim() || 'Ganpati Celebration';
+    if (title.includes('निसर्गाच्या कुशीत विघ्नहर्ता')) continue;
     const description = (r[8] || '').trim();
     const specialNote = (r[12] || '').trim();
 
