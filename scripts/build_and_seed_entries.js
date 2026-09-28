@@ -241,31 +241,85 @@ async function main() {
       }];
     }
 
-    // Deterministic ObjectId and Code
-    const hash = crypto.createHash('md5').update(`entry_${rowNum}_${name}_${title}`).digest('hex');
-    const id = hash.slice(0, 24);
-    const submissionCode = `GA26-${hash.slice(24, 30).toUpperCase()}`;
+    const images = files.filter(f => f.mime?.startsWith('image/'));
+    const videos = files.filter(f => f.mime?.startsWith('video/'));
 
-    const submission = {
-      _id: id,
-      id,
-      submissionCode,
-      name,
-      year,
-      department,
-      email,
-      mobile,
-      title,
-      description,
-      specialNote,
-      category: categoryKey,
-      files,
-      status: 'approved',
-      createdAt: new Date('2026-09-27T10:00:00.000Z'),
-      updatedAt: new Date('2026-09-27T10:00:00.000Z')
-    };
+    if (images.length > 0 && videos.length > 0) {
+      // 1. Photo card
+      const photoCat = categoryKey === 'artistic' ? 'artistic' : 'home-decor';
+      const hash1 = crypto.createHash('md5').update(`entry_${rowNum}_${name}_${title}_photos`).digest('hex');
+      const id1 = hash1.slice(0, 24);
+      const code1 = `GA26-${hash1.slice(24, 30).toUpperCase()}`;
 
-    submissions.push(submission);
+      submissions.push({
+        _id: id1,
+        id: id1,
+        submissionCode: code1,
+        name,
+        year,
+        department,
+        email,
+        mobile,
+        title,
+        description,
+        specialNote,
+        category: photoCat,
+        files: images,
+        status: 'approved',
+        createdAt: new Date('2026-09-27T10:00:00.000Z'),
+        updatedAt: new Date('2026-09-27T10:00:00.000Z')
+      });
+
+      // 2. Reel card
+      const hash2 = crypto.createHash('md5').update(`entry_${rowNum}_${name}_${title}_reel`).digest('hex');
+      const id2 = hash2.slice(0, 24);
+      const code2 = `GA26-${hash2.slice(24, 30).toUpperCase()}`;
+
+      submissions.push({
+        _id: id2,
+        id: id2,
+        submissionCode: code2,
+        name,
+        year,
+        department,
+        email,
+        mobile,
+        title: title.includes('Reel') ? title : `${title} (Reel)`,
+        description,
+        specialNote,
+        category: 'reels',
+        files: videos,
+        status: 'approved',
+        createdAt: new Date('2026-09-27T10:00:00.000Z'),
+        updatedAt: new Date('2026-09-27T10:00:00.000Z')
+      });
+    } else {
+      // Deterministic ObjectId and Code
+      const hash = crypto.createHash('md5').update(`entry_${rowNum}_${name}_${title}`).digest('hex');
+      const id = hash.slice(0, 24);
+      const submissionCode = `GA26-${hash.slice(24, 30).toUpperCase()}`;
+
+      const submission = {
+        _id: id,
+        id,
+        submissionCode,
+        name,
+        year,
+        department,
+        email,
+        mobile,
+        title,
+        description,
+        specialNote,
+        category: categoryKey,
+        files,
+        status: 'approved',
+        createdAt: new Date('2026-09-27T10:00:00.000Z'),
+        updatedAt: new Date('2026-09-27T10:00:00.000Z')
+      };
+
+      submissions.push(submission);
+    }
   }
 
   // Save to data/submissions.json

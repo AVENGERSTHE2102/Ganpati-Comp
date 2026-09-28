@@ -135,15 +135,8 @@
     "title": "Bappa’s Floral Paradise",
     "description": "My artwork is a handmade Ganpati decoration created with love and devotion.The idea was to make Bappa’s space feel simple, traditional, and aesthetically beautiful.",
     "specialNote": "Nice idea .",
-    "category": "reels",
+    "category": "home-decor",
     "files": [
-      {
-        "url": "/uploads/Copy_of_Ganpati_reel_-_shreya_wagh.mp4",
-        "originalName": "Copy of Ganpati reel - shreya wagh.mp4",
-        "mime": "video/mp4",
-        "size": 16655239,
-        "posterUrl": "/uploads/Copy_of_Ganpati_reel_-_shreya_wagh_poster.webp"
-      },
       {
         "url": "/uploads/IMG_20260914_153959876_-_shreya_wagh.webp",
         "originalName": "IMG_20260914_153959876 - shreya wagh.jpg",
@@ -154,7 +147,33 @@
     ],
     "status": "approved",
     "createdAt": "2026-09-27T10:00:00.000Z",
-    "updatedAt": "2026-09-27T10:00:00.000Z"
+    "updatedAt": "2026-09-28T03:42:37.521Z"
+  },
+  {
+    "_id": "ed269931d155ae02429eeca3",
+    "id": "ed269931d155ae02429eeca3",
+    "submissionCode": "GA26-C6A1D9",
+    "name": "Shreya Deepak Wagh",
+    "year": "SE",
+    "department": "EXTC",
+    "email": "",
+    "mobile": "9167888675",
+    "title": "Bappa’s Floral Paradise (Reel)",
+    "description": "My artwork is a handmade Ganpati decoration created with love and devotion.The idea was to make Bappa’s space feel simple, traditional, and aesthetically beautiful.",
+    "specialNote": "Nice idea .",
+    "category": "reels",
+    "files": [
+      {
+        "url": "/uploads/Copy_of_Ganpati_reel_-_shreya_wagh.mp4",
+        "originalName": "Copy of Ganpati reel - shreya wagh.mp4",
+        "mime": "video/mp4",
+        "size": 16655239,
+        "posterUrl": "/uploads/Copy_of_Ganpati_reel_-_shreya_wagh_poster.webp"
+      }
+    ],
+    "status": "approved",
+    "createdAt": "2026-09-27T10:00:00.000Z",
+    "updatedAt": "2026-09-28T03:42:37.522Z"
   },
   {
     "_id": "5748b26436b35f227bac6ae6",
@@ -287,13 +306,6 @@
     "category": "home-decor",
     "files": [
       {
-        "url": "/uploads/CBB06A93-0CB4-48E7-B4DE-BD99F07EB15E_-_Harshita_Ch.mp4",
-        "originalName": "CBB06A93-0CB4-48E7-B4DE-BD99F07EB15E - Harshita Chavan.mp4",
-        "mime": "video/mp4",
-        "size": 20763952,
-        "posterUrl": "/uploads/CBB06A93-0CB4-48E7-B4DE-BD99F07EB15E_-_Harshita_Ch_poster.webp"
-      },
-      {
         "url": "/uploads/IMG_6852_-_Harshita_Chavan.webp",
         "originalName": "IMG_6852 - Harshita Chavan.jpeg",
         "mime": "image/webp",
@@ -317,7 +329,33 @@
     ],
     "status": "approved",
     "createdAt": "2026-09-27T10:00:00.000Z",
-    "updatedAt": "2026-09-27T10:00:00.000Z"
+    "updatedAt": "2026-09-28T03:42:37.522Z"
+  },
+  {
+    "_id": "87d1d02689071437541741d9",
+    "id": "87d1d02689071437541741d9",
+    "submissionCode": "GA26-A5AFBF",
+    "name": "Harshita Prafull Chavan",
+    "year": "SE",
+    "department": "IT",
+    "email": "06chavanharshita@gmail.com",
+    "mobile": "9372790035",
+    "title": "Shivatmaj : Son of the Cave Ascetic. (Reel)",
+    "description": "The Ganpati decoration themed a cave of lord shiva where in Ganpati Bappa is in the form of lord shiva. This theme was inspired to me by our kuldaivat (family deity) that is “श्री देव वसिक” (lord shiva himself). The shivling in our village of our family deity isn’t carved out of stone by the workers, it was found at the place beneath the ground where the temple is now situated. That’s why it is also called as “Swayambhu”. \nAs told by my grandfather a cow everyday used to shower her milk on that place, on the ground where the shivling stone was found after digging and to found out the reason why the cow is giving milk on that place everyday it was dug and the shivling was found. This interesting and miraculous story of our deity inspired me to make Bappa’s decoration devoted to lord shiva in his cave/ kailasa cave.",
+    "specialNote": "Bappa’s tiger print dhotar (dhoti) and uparna (shawl) wasn’t draped and given to us by the murtikaar, it is specially draped by me on the day before Ganesh Chaturthi❤️ to give Bappa that shiva look.",
+    "category": "reels",
+    "files": [
+      {
+        "url": "/uploads/CBB06A93-0CB4-48E7-B4DE-BD99F07EB15E_-_Harshita_Ch.mp4",
+        "originalName": "CBB06A93-0CB4-48E7-B4DE-BD99F07EB15E - Harshita Chavan.mp4",
+        "mime": "video/mp4",
+        "size": 20763952,
+        "posterUrl": "/uploads/CBB06A93-0CB4-48E7-B4DE-BD99F07EB15E_-_Harshita_Ch_poster.webp"
+      }
+    ],
+    "status": "approved",
+    "createdAt": "2026-09-27T10:00:00.000Z",
+    "updatedAt": "2026-09-28T03:42:37.522Z"
   },
   {
     "_id": "c7e743d83eab071dce65ef96",
@@ -360,7 +398,26 @@
         "mime": "image/webp",
         "size": 1049446,
         "posterUrl": null
-      },
+      }
+    ],
+    "status": "approved",
+    "createdAt": "2026-09-27T10:00:00.000Z",
+    "updatedAt": "2026-09-28T03:42:37.522Z"
+  },
+  {
+    "_id": "b5a387efa275650c4120a0ae",
+    "id": "b5a387efa275650c4120a0ae",
+    "submissionCode": "GA26-05A2D8",
+    "name": "Om sanap",
+    "year": "BE",
+    "department": "MECH",
+    "email": "sanapom09@gmail.com",
+    "mobile": "9594006393",
+    "title": "Home decor (Reel)",
+    "description": "I have tried to recreate the temple of God Hanuman which is on a fort in my home decor.",
+    "specialNote": "Ganpati bappa morya",
+    "category": "reels",
+    "files": [
       {
         "url": "/uploads/VID-20260915-WA0001_-_OM_SANAP.mp4",
         "originalName": "VID-20260915-WA0001 - OM SANAP.mp4",
@@ -371,7 +428,7 @@
     ],
     "status": "approved",
     "createdAt": "2026-09-27T10:00:00.000Z",
-    "updatedAt": "2026-09-27T10:00:00.000Z"
+    "updatedAt": "2026-09-28T03:42:37.522Z"
   },
   {
     "_id": "7402b9bf43b69fd0f8af8242",
@@ -551,7 +608,26 @@
         "mime": "image/webp",
         "size": 1370664,
         "posterUrl": null
-      },
+      }
+    ],
+    "status": "approved",
+    "createdAt": "2026-09-27T10:00:00.000Z",
+    "updatedAt": "2026-09-28T03:42:37.522Z"
+  },
+  {
+    "_id": "28548dc4f98321cc77a453ac",
+    "id": "28548dc4f98321cc77a453ac",
+    "submissionCode": "GA26-685352",
+    "name": "Shreya Deepak Wagh",
+    "year": "SE",
+    "department": "EXTC",
+    "email": "shreyaw2007@gmail.com",
+    "mobile": "9167888675",
+    "title": "Golden theme . (Reel)",
+    "description": "My artwork is a Golden-Themed Ganpati decorated with flowers. I was inspired by the beauty and divine feeling of Ganpati celebrations.",
+    "specialNote": "Nice concept.",
+    "category": "reels",
+    "files": [
       {
         "url": "/uploads/VID-20260918-WA0003_-_shreya_wagh.mp4",
         "originalName": "VID-20260918-WA0003 - shreya wagh.mp4",
@@ -562,7 +638,7 @@
     ],
     "status": "approved",
     "createdAt": "2026-09-27T10:00:00.000Z",
-    "updatedAt": "2026-09-27T10:00:00.000Z"
+    "updatedAt": "2026-09-28T03:42:37.522Z"
   },
   {
     "_id": "08adbfffef9f7c58cb7d04e1",
@@ -697,7 +773,26 @@
         "mime": "image/webp",
         "size": 3783558,
         "posterUrl": null
-      },
+      }
+    ],
+    "status": "approved",
+    "createdAt": "2026-09-27T10:00:00.000Z",
+    "updatedAt": "2026-09-28T03:42:37.522Z"
+  },
+  {
+    "_id": "9d7772e0b5540a7ea23cd5b8",
+    "id": "9d7772e0b5540a7ea23cd5b8",
+    "submissionCode": "GA26-85FCE1",
+    "name": "Paarth Powar",
+    "year": "TE",
+    "department": "EXTC",
+    "email": "pawarpaarth07@gmail.com",
+    "mobile": "8828913077",
+    "title": "POWAR ANCHA BAPPA ✨ (Reel)",
+    "description": "पाषाण रूप गणपती...\nपाषाण रूप गणपती म्हणजे दगडापासून कोरलेली गणेशाची मूर्ती (Stone Idol of Lord Ganesha). मराठीत 'पाषाण' या शब्दाचा अर्थ 'दगड' किंवा 'खडक' असा होतो, आणि 'रूप' म्हणजे 'स्वरूप' किंवा 'मूर्ती'.हिंदू धर्मात आणि विशेषतः महाराष्ट्रात पाषाण रूपातील गणपतीला अत्यंत पवित्र आणि सर्वोच्च स्थान दिले जाते.पाषाण रूप गणपतीचे महत्त्व आणि वैशिष्ट्ये:स्वयंभू मूर्ती: महाराष्ट्रातील प्रसिद्ध अष्टविनायक (उदा. मोरगावचा मयुरेश्वर, सिद्धटेकचा सिद्धिविनायक इत्यादी) आणि इतर प्राचीन मंदिरांमधील गणपतीच्या मूर्ती या प्रामुख्याने पाषाण रूपातील आणि 'स्वयंभू' (निसर्गतः तयार झालेल्या) आहेत.स्थैर्य आणि शक्तीचे प्रतीक: दगड किंवा पाषाण हा जसा अचल आणि कणखर असतो, तसेच पाषाण रूप गणपती हे जीवनातील संकटांना तोंड देण्याचे स्थैर्य, शक्ती आणि चिरंतन ऊर्जेचे प्रतीक मानले जाते.दीर्घायुष्य (शाश्वतता): माती किंवा इतर साहित्यापासून बनवलेल्या मूर्तींचे विसर्जन केले जाते, परंतु पाषाण मूर्ती मंदिरात किंवा घराच्या देव्हाऱ्यात पिढ्यानपिढ्या पूजली जाते. तिचे विसर्जन होत नाही.अभिषेक आणि पूजा विधी: पाषाण मूर्तीवर पाण्याचे, दुधाचे किंवा पंचामृताचे अभिषेक करणे सोपे आणि शास्त्रोक्त मानले जाते, कारण दगडाची मूर्ती पाण्याने खराब होत नाही.थोडक्यात सांगायचे तर, जेव्हा आपण पाषाण रूप गणपती म्हणतो, तेव्हा त्याचा अर्थ निसर्गाच्या किंवा खडकाच्या रूपात प्रकट झालेला अथवा काळ्या/संगमवरी दगडापासून अत्यंत सुंदररीत्या कोरलेला बाप्पा असा होतो.",
+    "specialNote": "",
+    "category": "reels",
+    "files": [
       {
         "url": "/uploads/PAARTH_TE_EXTC_REEL-VIDEO_-_Paarth_Powar.mp4",
         "originalName": "PAARTH_TE_EXTC_REEL-VIDEO - Paarth Powar.mp4",
@@ -708,7 +803,7 @@
     ],
     "status": "approved",
     "createdAt": "2026-09-27T10:00:00.000Z",
-    "updatedAt": "2026-09-27T10:00:00.000Z"
+    "updatedAt": "2026-09-28T03:42:37.522Z"
   },
   {
     "_id": "b18cdb061369e1846369584a",
@@ -898,6 +993,32 @@
         "posterUrl": null
       },
       {
+        "url": "/uploads/Screenshot_2026-09-26-23-09-57-02_1c337646f2987567.webp",
+        "originalName": "Screenshot_2026-09-26-23-09-57-02_1c337646f29875672b5a61192b9010f9 - Pavan Botla.jpg",
+        "mime": "image/webp",
+        "size": 203394,
+        "posterUrl": null
+      }
+    ],
+    "status": "approved",
+    "createdAt": "2026-09-27T10:00:00.000Z",
+    "updatedAt": "2026-09-28T03:42:37.522Z"
+  },
+  {
+    "_id": "71e9108504571cef6a20870b",
+    "id": "71e9108504571cef6a20870b",
+    "submissionCode": "GA26-D05787",
+    "name": "Pavan Vinayak Botla",
+    "year": "TE",
+    "department": "IT",
+    "email": "pavanbotla10@gmail.com",
+    "mobile": "9867182086",
+    "title": "Eco-Friendly Bappa: Creation, Worship & Visarjan (Reel)",
+    "description": "My artwork showcases our home’s eco-friendly Shadu Mati Ganapati, created with devotion, patience, and love. This year, I designed and painted Lord Ganesha with a realistic elephant-faced appearance, aiming to reflect the divine and majestic form of Bappa. The video captures the entire journey—from shaping the idol by hand and bringing its features to life through painting, to worshipping Bappa during the festival and finally bidding an emotional farewell during Visarjan. The inspiration behind this creation comes from my deep faith in Lord Ganesha and my desire to celebrate Ganesh Chaturthi in an environmentally responsible way. Instead of using a POP idol, I chose Shadu Mati, combining tradition, creativity, and care for nature. For me, this is not just an artwork but a heartfelt expression of devotion, gratitude, and love for Bappa. Through this creation, I hope to inspire others to embrace eco-friendly celebrations while preserving the spiritual essence of our culture.",
+    "specialNote": "",
+    "category": "reels",
+    "files": [
+      {
         "url": "/uploads/IMG_4416_-_Pavan_Botla.mp4",
         "originalName": "IMG_4416 - Pavan Botla.MOV",
         "mime": "video/mp4",
@@ -912,13 +1033,6 @@
         "posterUrl": "/uploads/IMG_4417_-_Pavan_Botla_poster.webp"
       },
       {
-        "url": "/uploads/Screenshot_2026-09-26-23-09-57-02_1c337646f2987567.webp",
-        "originalName": "Screenshot_2026-09-26-23-09-57-02_1c337646f29875672b5a61192b9010f9 - Pavan Botla.jpg",
-        "mime": "image/webp",
-        "size": 203394,
-        "posterUrl": null
-      },
-      {
         "url": "/uploads/Untitled_77-4_-_Pavan_Botla.mp4",
         "originalName": "Untitled 77-4 - Pavan Botla.mp4",
         "mime": "video/mp4",
@@ -928,7 +1042,7 @@
     ],
     "status": "approved",
     "createdAt": "2026-09-27T10:00:00.000Z",
-    "updatedAt": "2026-09-27T10:00:00.000Z"
+    "updatedAt": "2026-09-28T03:42:37.522Z"
   },
   {
     "_id": "9bbcc5156059839a9428b100",
@@ -1034,21 +1148,22 @@
     "updatedAt": "2026-09-27T10:00:00.000Z"
   },
   {
-    "_id": "7016468890447a1c3c9e33fb",
-    "id": "7016468890447a1c3c9e33fb",
-    "submissionCode": "GA26-1E6BE3",
-    "name": "Saumil Tharwal",
-    "year": "SE",
-    "department": "MECH",
-    "email": "saumil794@gmail.com",
-    "mobile": "7738260735",
+    "_id": "6ab9c9ff1669038969f933bd",
+    "id": "6ab9c9ff1669038969f933bd",
+    "submissionCode": "GA26-C965DA",
+    "name": "Saumil  Tharwal",
     "title": "गणपती बाप्पा च्या भक्तीत तल्लीन होऊन नवीन पिढी तर्फे छोटेसे योगदान",
-    "description": "गणपती बाप्पा च्या भक्तीत तल्लीन होऊन नवीन पिढी तर्फे छोटेसे योगदान",
-    "specialNote": "",
     "category": "literature",
-    "files": [],
+    "files": [
+      {
+        "url": "https://slshymoagq7c0crs.public.blob.vercel-storage.com/submissions/214b7e45-f5c4-4359-9d6a-9ec5e191bbc3-IMG-20260926-WA0018.jpg",
+        "originalName": "IMG-20260926-WA0018.jpg",
+        "mime": "image/jpeg",
+        "size": 96465
+      }
+    ],
     "status": "approved",
-    "createdAt": "2026-09-27T10:00:00.000Z",
-    "updatedAt": "2026-09-27T10:00:00.000Z"
+    "createdAt": "2026-09-28T01:59:27.039Z",
+    "updatedAt": "2026-09-28T01:59:27.039Z"
   }
 ]
