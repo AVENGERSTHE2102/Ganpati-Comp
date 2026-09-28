@@ -4,8 +4,8 @@ const config = {
   collegeName: "Ganesh Chaturthi Celebrations",
   aboutClub: "The Marathi Club brings together everyone who loves Maharashtrian culture, food, and festivals. Every year we celebrate Ganesh Chaturthi with an Agman (welcome) competition — decorations, art, and performances shared by our own community.",
 
-  submissionDeadline: "2026-10-05T18:30:00+05:30",
-  votingDeadline: "2026-10-15T23:59:00+05:30",
+  submissionDeadline: "2026-09-27T23:59:59+05:30",
+  votingDeadline: "2026-09-30T23:59:59+05:30",
   votingRule: "one_per_category",
   showVoteCountsPublicly: true,
 

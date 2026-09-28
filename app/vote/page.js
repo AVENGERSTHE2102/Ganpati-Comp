@@ -37,16 +37,24 @@ export default async function VotePage({ searchParams }) {
       </section>
       <div className="container section">
         <VoteClient
-          submissions={submissions.map(({ _id, createdAt, updatedAt, ...s }) => ({
-            id: _id ? _id.toString() : s.id,
-            ...s,
-          }))}
+          submissions={submissions.map(({ _id, createdAt, updatedAt, ...s }) => {
+            const sid = (_id ? _id.toString() : s.id) || "";
+            return {
+              ...s,
+              id: sid,
+              _id: sid,
+            };
+          })}
           categories={config.categories.map(({ key, label, marathi }) => ({ key, label, marathi }))}
           voteCounts={voteCounts}
           showVoteCounts={config.showVoteCountsPublicly}
           pastDeadline={Date.now() > new Date(config.votingDeadline).getTime()}
           voterEmail={voterEmail}
-          initialVotes={Object.fromEntries(myVotes.map((v) => [v.category, v.submissionId.toString()]))}
+          initialVotes={Object.fromEntries(
+            (myVotes || [])
+              .filter((v) => v.category && v.submissionId)
+              .map((v) => [v.category, v.submissionId.toString()])
+          )}
           initialCategory={config.categories.some((x) => x.key === c) ? c : config.categories[0].key}
         />
       </div>

@@ -96,8 +96,8 @@ function FullMediaItem({ file, alt }) {
 export default function VoteClient({ submissions, categories, voteCounts, showVoteCounts, pastDeadline, voterEmail, initialVotes, initialCategory }) {
   const [category, setCategory] = useState(initialCategory);
   const [mediaFilter, setMediaFilter] = useState("all");
-  const [votes, setVotes] = useState(initialVotes);
-  const [counts, setCounts] = useState(voteCounts);
+  const [votes, setVotes] = useState(initialVotes || {});
+  const [counts, setCounts] = useState(voteCounts || {});
   const [open, setOpen] = useState(null);
   const [busy, setBusy] = useState(null);
   const [toast, setToast] = useState("");
@@ -119,6 +119,14 @@ export default function VoteClient({ submissions, categories, voteCounts, showVo
     return () => window.removeEventListener("popstate", syncFromUrl);
   }, [categories]);
 
+  useEffect(() => {
+    setVotes(initialVotes || {});
+  }, [initialVotes]);
+
+  useEffect(() => {
+    setCounts(voteCounts || {});
+  }, [voteCounts]);
+
   const filtered = visible.filter((s) => {
     if (mediaFilter === "all") return true;
     const isReel = isVideoFile(s.files?.[0]);
@@ -128,6 +136,12 @@ export default function VoteClient({ submissions, categories, voteCounts, showVo
   });
 
   const votedFor = votes[category];
+  const votedCount = categories.filter((c) => votes[c.key]).length;
+  const totalCategories = categories.length;
+  const isAllCategoriesVoted = Boolean(voterEmail && votedCount === totalCategories);
+  const unvotedCategories = categories.filter((c) => !votes[c.key]);
+  const nextUnvotedCategory = unvotedCategories.find((c) => c.key !== category) || unvotedCategories[0];
+  const votedEntry = visible.find((s) => s.id === votedFor);
 
   function show(s) {
     setOpen(s);
@@ -152,35 +166,83 @@ export default function VoteClient({ submissions, categories, voteCounts, showVo
 
   async function castVote(s) {
     setBusy(s.id);
-    const res = await fetch("/api/vote/cast", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ submissionId: s.id }) });
+    const res = await fetch("/api/vote/cast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ submissionId: s.id }),
+    });
     const data = await res.json().catch(() => ({}));
     setBusy(null);
     closeDialog();
     if (data.ok) {
-      setVotes((v) => ({ ...v, [s.category]: s.id }));
+      const nextVotes = { ...votes, [s.category]: s.id };
+      setVotes(nextVotes);
       setCounts((c) => ({ ...c, [s.id]: (c[s.id] || 0) + 1 }));
-      setToast(`🙏 Your vote for “${s.title}” is recorded!`);
+      const remaining = categories.filter((c) => !nextVotes[c.key]);
+      if (remaining.length > 0) {
+        setToast(`🙏 Your vote for “${s.title}” is recorded! ${remaining.length} ${remaining.length === 1 ? "category" : "categories"} left to vote.`);
+      } else {
+        setToast(`🙏 Your vote for “${s.title}” is recorded! You have voted in all 4 categories! 🎉`);
+      }
     } else {
       setToast(data.error || "Something went wrong. Please try again.");
     }
-    setTimeout(() => setToast(""), 4000);
+    setTimeout(() => setToast(""), 5000);
   }
 
   const isOpenReel = open && isVideoFile(open.files?.[0]);
+  const votedForInOpenCat = open ? votes[open.category] : null;
 
   return (
     <div>
       {pastDeadline && <div className="notice">Voting has closed. Thank you to everyone who took part — Ganpati Bappa Morya!</div>}
       {!voterEmail && !pastDeadline && (
         <div className="notice notice-signin">
-          <span>Sign in with Google to vote — it takes one tap.</span>
+          <span>Sign in with Google to vote — 1 vote allowed in each of the 4 categories.</span>
           <Link className="btn btn-sm" href="/signin?callbackUrl=/vote">Continue with Google</Link>
+        </div>
+      )}
+
+      {voterEmail && !pastDeadline && (
+        <div className="vote-progress-panel">
+          <div className="vote-progress-info">
+            <span className="vote-progress-title">
+              {isAllCategoriesVoted ? "🎉 All 4 categories voted!" : "🗳️ Your Voting Progress (1 vote per category)"}
+            </span>
+            <span className="vote-progress-count">
+              <strong>{votedCount}</strong> of <strong>{totalCategories}</strong> categories voted
+            </span>
+          </div>
+          <div className="vote-progress-pills">
+            {categories.map((c) => {
+              const hasVoted = Boolean(votes[c.key]);
+              const isCurrent = category === c.key;
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  className={`vote-progress-pill ${hasVoted ? "pill-voted" : "pill-pending"} ${isCurrent ? "pill-active" : ""}`}
+                  onClick={() => pickCategory(c.key)}
+                  title={hasVoted ? `Voted in ${c.label}` : `Click to view and vote in ${c.label}`}
+                >
+                  <span className="pill-dot">{hasVoted ? "✓" : "○"}</span>
+                  <span className="pill-name">{c.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
       <div className="tabs" role="tablist">
         {categories.map((c) => (
-          <button key={c.key} role="tab" aria-selected={category === c.key} className="tab" onClick={() => pickCategory(c.key)}>
+          <button
+            key={c.key}
+            role="tab"
+            aria-selected={category === c.key}
+            className={`tab ${votes[c.key] ? "has-voted" : ""}`}
+            onClick={() => pickCategory(c.key)}
+          >
             <span className="deva">{c.marathi}</span>
             <span>{c.label}</span>
             {votes[c.key] && <span className="tab-check" title="You voted here">✓</span>}
@@ -211,7 +273,41 @@ export default function VoteClient({ submissions, categories, voteCounts, showVo
         </div>
       )}
 
-      {votedFor && <p className="voted-banner">✓ You&apos;ve voted in this category. Thank you!</p>}
+      {votedFor ? (
+        <div className="voted-banner-card">
+          <div className="voted-banner-content">
+            <span className="voted-banner-icon">✓</span>
+            <div>
+              <p className="voted-banner-text">
+                You&apos;ve voted in <strong>{categories.find((c) => c.key === category)?.label}</strong>
+                {votedEntry ? ` for “${votedEntry.title}”` : ""}. Thank you!
+              </p>
+              {!isAllCategoriesVoted && nextUnvotedCategory && (
+                <p className="voted-banner-sub">
+                  {unvotedCategories.length} {unvotedCategories.length === 1 ? "category" : "categories"} remaining to cast your vote.
+                </p>
+              )}
+            </div>
+          </div>
+          {!isAllCategoriesVoted && nextUnvotedCategory && (
+            <button
+              type="button"
+              className="btn-next-category"
+              onClick={() => pickCategory(nextUnvotedCategory.key)}
+            >
+              Vote in {nextUnvotedCategory.label} →
+            </button>
+          )}
+        </div>
+      ) : null}
+
+      {isAllCategoriesVoted && (
+        <div className="voted-all-card">
+          <p>
+            💐 <strong>Ganpati Bappa Morya!</strong> You have cast your votes across all {totalCategories} categories. Thank you for supporting our community artists!
+          </p>
+        </div>
+      )}
 
       {!filtered.length ? (
         <div className="empty">
@@ -300,14 +396,31 @@ export default function VoteClient({ submissions, categories, voteCounts, showVo
                   &ldquo;{open.specialNote}&rdquo;
                 </p>
               )}
-              {votedFor === open.id ? (
+              {votedForInOpenCat === open.id ? (
                 <p className="chip chip-gold">✓ You voted for this entry</p>
-              ) : votedFor || pastDeadline ? null : !voterEmail ? (
-                <Link className="btn" href={`/signin?callbackUrl=/vote?c=${open.category}`}>Sign in to vote</Link>
+              ) : votedForInOpenCat ? (
+                <div style={{ marginTop: 12 }}>
+                  <p className="voted-banner">✓ You&apos;ve already voted in this category</p>
+                  {!isAllCategoriesVoted && nextUnvotedCategory && (
+                    <button
+                      type="button"
+                      className="btn-next-category"
+                      style={{ marginTop: 10 }}
+                      onClick={() => {
+                        closeDialog();
+                        pickCategory(nextUnvotedCategory.key);
+                      }}
+                    >
+                      Vote in {nextUnvotedCategory.label} →
+                    </button>
+                  )}
+                </div>
+              ) : pastDeadline ? null : !voterEmail ? (
+                <Link className="btn btn-lg" href={`/signin?callbackUrl=/vote?c=${open.category}`}>Sign in to vote</Link>
               ) : (
-                <button className="btn btn-lg" disabled={!!busy} onClick={() => castVote(open)}>{busy ? "Voting…" : "Vote for this entry 🙏"}</button>
+                <button className="btn btn-lg" disabled={!!busy} onClick={() => castVote(open)}>{busy === open.id ? "Voting…" : "Vote for this entry 🙏"}</button>
               )}
-              <p className="tiny muted" style={{ marginTop: 10 }}>One vote per category — it can&apos;t be changed later.</p>
+              <p className="tiny muted" style={{ marginTop: 10 }}>One vote per category ({totalCategories} categories total) — cannot be changed later.</p>
             </div>
           </div>
         )}

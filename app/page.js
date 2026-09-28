@@ -90,23 +90,31 @@ export default async function Home({ searchParams }) {
         <header className="section-head reveal">
           <p className="eyebrow gold">मतदान दालन · Live Voting Arena</p>
           <h2>Choose Your Favourites</h2>
-          <p style={{ maxWidth: 620, margin: "8px auto 0", color: "var(--ink-muted)", fontSize: "1.05rem" }}>
-            Explore community entries across all 4 categories. Tap any entry to view photos, watch celebration reels, or read literature submissions up close!
+          <p style={{ maxWidth: 660, margin: "8px auto 0", color: "var(--ink-muted)", fontSize: "1.05rem" }}>
+            You can cast 1 vote in each of the 4 categories. Explore community entries, watch celebration reels, or read literature submissions up close, and vote for your favourites!
           </p>
           <LotusDivider />
         </header>
 
         <VoteClient
-          submissions={submissions.map(({ _id, createdAt, updatedAt, ...s }) => ({
-            id: _id ? _id.toString() : s.id,
-            ...s,
-          }))}
+          submissions={submissions.map(({ _id, createdAt, updatedAt, ...s }) => {
+            const sid = (_id ? _id.toString() : s.id) || "";
+            return {
+              ...s,
+              id: sid,
+              _id: sid,
+            };
+          })}
           categories={config.categories.map(({ key, label, marathi }) => ({ key, label, marathi }))}
           voteCounts={voteCounts}
           showVoteCounts={config.showVoteCountsPublicly}
           pastDeadline={!votingOpen}
           voterEmail={voterEmail}
-          initialVotes={Object.fromEntries((myVotes || []).map((v) => [v.category, v.submissionId.toString()]))}
+          initialVotes={Object.fromEntries(
+            (myVotes || [])
+              .filter((v) => v.category && v.submissionId)
+              .map((v) => [v.category, v.submissionId.toString()])
+          )}
           initialCategory={config.categories.some((x) => x.key === c) ? c : config.categories[0].key}
         />
       </section>

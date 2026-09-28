@@ -18,9 +18,26 @@ export async function POST(request) {
   if (!submissionId) return Response.json({ error: "submissionId is required." }, { status: 400 });
 
   const db = await database().catch(() => null);
-  let submission = staticSubmissions.find((s) => s.id === submissionId || s._id === submissionId || s.submissionCode === submissionId);
-  if (!submission && db) {
-    submission = await db.collection("submissions").findOne({ _id: toId(submissionId), status: "approved" }).catch(() => null);
+  let submission = null;
+  if (db) {
+    let mongoId;
+    try {
+      mongoId = toId(submissionId);
+    } catch {
+      mongoId = submissionId;
+    }
+    submission = await db
+      .collection("submissions")
+      .findOne({
+        $or: [{ _id: mongoId }, { id: submissionId }, { submissionCode: submissionId }],
+        status: "approved",
+      })
+      .catch(() => null);
+  }
+  if (!submission) {
+    submission = staticSubmissions.find(
+      (s) => s.id === submissionId || s._id === submissionId || s.submissionCode === submissionId
+    );
   }
   if (!submission) return Response.json({ error: "Entry not found." }, { status: 404 });
 
